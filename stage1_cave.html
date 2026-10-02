@@ -1754,6 +1754,14 @@ reset();requestAnimationFrame(loop);
 (()=>{
  const mobile=matchMedia("(hover:none) and (pointer:coarse)").matches||navigator.maxTouchPoints>0;if(!mobile)return;
  const stick=document.getElementById("mcStick"),knob=document.getElementById("mcKnob"),look=document.getElementById("mcLook"),eb=document.getElementById("mcE"),run=document.getElementById("mcRun");
+ const mobileControls=document.getElementById("mobileControls");
+ // Ver.1.5.2: keep the high-z-index touch layer out of the way of the Stage-1 START button.
+ // It becomes active only after the existing START button has been pressed.
+ if(mobileControls){
+   mobileControls.style.display="none";
+   const caveStartBtn=document.getElementById("startBtn");
+   if(caveStartBtn)caveStartBtn.addEventListener("click",()=>{mobileControls.style.display="block"},{once:true});
+ }
  const held=new Set();
  function fire(type,code,key){window.dispatchEvent(new KeyboardEvent(type,{key,code,bubbles:true,cancelable:true}))}
  function set(code,on,key){if(on&&!held.has(code)){held.add(code);fire("keydown",code,key)}else if(!on&&held.has(code)){held.delete(code);fire("keyup",code,key)}}
