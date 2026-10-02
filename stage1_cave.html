@@ -1660,6 +1660,14 @@ function clearPressed(){pressed.clear();}
 window.addEventListener('blur',clearPressed);
 window.addEventListener('focus',clearPressed);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)clearPressed()});
+// Ver.1.5.3 mobile-only bridge: rotate the existing cave player from touch look.
+// Kept inside the original IIFE so no game state is exposed globally.
+document.addEventListener('cave-mobile-look',e=>{
+  if(!running||gameState!=='playing')return;
+  const dx=Number(e.detail&&e.detail.dx)||0;
+  player.dir += dx*.003;
+});
+
 
 // FPS mouse look: Pointer Lock is the primary and only non-drag look mode.
 // This avoids the screen-edge problem that made one direction stop rotating.
@@ -1763,7 +1771,7 @@ reset();requestAnimationFrame(loop);
    if(caveStartBtn)caveStartBtn.addEventListener("click",()=>{mobileControls.style.display="block"},{once:true});
  }
  const held=new Set();
- function fire(type,code,key){window.dispatchEvent(new KeyboardEvent(type,{key,code,bubbles:true,cancelable:true}))}
+ function fire(type,code,key){document.dispatchEvent(new KeyboardEvent(type,{key,code,bubbles:true,cancelable:true}))}
  function set(code,on,key){if(on&&!held.has(code)){held.add(code);fire("keydown",code,key)}else if(!on&&held.has(code)){held.delete(code);fire("keyup",code,key)}}
  function clear(){set("KeyW",0,"w");set("KeyA",0,"a");set("KeyS",0,"s");set("KeyD",0,"d");knob.style.transform="translate(0,0)"}
  let sid=null,cx=0,cy=0;
@@ -1773,14 +1781,10 @@ reset();requestAnimationFrame(loop);
  stick.onpointerup=stick.onpointercancel=e=>{if(sid===null||e.pointerId===sid){sid=null;clear();e.preventDefault()}};
  let lid=null,lx=0;
  look.onpointerdown=e=>{lid=e.pointerId;lx=e.clientX;look.setPointerCapture(lid);e.preventDefault()};
- look.onpointermove=e=>{if(e.pointerId!==lid)return;let dx=e.clientX-lx;lx=e.clientX;try{
-   if(typeof inRoom201!=="undefined"&&inRoom201)roomPlayer201.dir+=dx*.003;
-   else if(typeof inRoom218!=="undefined"&&inRoom218)roomPlayer218.dir+=dx*.003;
-   else if(typeof inRoom209!=="undefined"&&inRoom209)roomPlayer209.dir+=dx*.003;
-   else if(typeof inRoom203!=="undefined"&&inRoom203)roomPlayer203.dir+=dx*.003;
-   else if(typeof inRoom214!=="undefined"&&inRoom214)roomPlayer.dir+=dx*.003;
-   else if(typeof player!=="undefined")player.dir+=dx*.003;
- }catch(_){}e.preventDefault()};
+ look.onpointermove=e=>{if(e.pointerId!==lid)return;let dx=e.clientX-lx;lx=e.clientX;
+   document.dispatchEvent(new CustomEvent("cave-mobile-look",{detail:{dx}}));
+   e.preventDefault()
+ };
  look.onpointerup=look.onpointercancel=e=>{if(lid===null||e.pointerId===lid){lid=null;e.preventDefault()}};
  eb.onpointerdown=e=>{e.preventDefault();fire("keydown","KeyE","e");setTimeout(()=>fire("keyup","KeyE","e"),70)};
  let fast=false;run.onpointerdown=e=>{e.preventDefault();fast=!fast;set("ShiftLeft",fast,"Shift");run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
