@@ -154,7 +154,27 @@
 .mc-e{position:absolute;right:22px;bottom:28px;width:84px;height:84px;border-radius:50%;border:2px solid rgba(255,255,255,.74);background:rgba(18,22,28,.58);color:#fff;font:900 30px system-ui;pointer-events:auto}
 .mc-e span{display:block;font-size:10px}.mc-run{position:absolute;right:120px;bottom:42px;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.52);background:rgba(18,22,28,.48);color:#fff;font:800 11px system-ui;pointer-events:auto}
 @media (hover:none) and (pointer:coarse){#mobileControls{display:block}html,body{overscroll-behavior:none}}
-</style></head>
+</style>
+<style id="v151-mobile-start-layout-fix">
+/* Ver.1.5.1: Stage-1 start screen layout fix for landscape phones only. */
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  #start{align-items:stretch;overflow:hidden;padding:4px 8px;box-sizing:border-box}
+  #start .card{
+    width:min(760px,calc(100vw - 16px));
+    max-height:calc(100dvh - 8px);
+    margin:auto;padding:12px 18px 10px;border-radius:12px;
+    box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  #start h1{font-size:clamp(24px,7.2vh,38px);margin-bottom:4px}
+  #start .sub{margin-bottom:7px;font-size:13px}
+  #start p{margin:7px 0;font-size:clamp(12px,2.8vh,15px);line-height:1.35}
+  #start .controls{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 6px;margin:7px 0;font-size:11px}
+  #start .controls span{padding:4px 6px}
+  #start #startBtn{display:block;margin:7px auto 0;padding:9px 18px;font-size:14px}
+}
+</style>
+</head>
 <body>
 <div id="game"><canvas id="canvas" width="1100" height="620" tabindex="0"></canvas>
 
