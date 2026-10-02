@@ -154,6 +154,10 @@
 .mc-e{position:absolute;right:22px;bottom:28px;width:84px;height:84px;border-radius:50%;border:2px solid rgba(255,255,255,.74);background:rgba(18,22,28,.58);color:#fff;font:900 30px system-ui;pointer-events:auto}
 .mc-e span{display:block;font-size:10px}.mc-run{position:absolute;right:120px;bottom:42px;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.52);background:rgba(18,22,28,.48);color:#fff;font:800 11px system-ui;pointer-events:auto}
 @media (hover:none) and (pointer:coarse){#mobileControls{display:block}html,body{overscroll-behavior:none}}
+@media (hover:none) and (pointer:coarse){
+  body.mobile-playing #topbar{display:none!important}
+}
+
 </style>
 <style id="v151-mobile-start-layout-fix">
 /* Ver.1.5.1: Stage-1 start screen layout fix for landscape phones only. */
@@ -639,11 +643,12 @@ function update(dt){
 
  let f=(down('KeyW')?1:0)-(down('KeyS')?1:0);
  let strafe=(down('KeyD')?1:0)-(down('KeyA')?1:0);
+ if(mobileInput.f||mobileInput.strafe){f=mobileInput.f;strafe=mobileInput.strafe}
 
  if(f||strafe){
    let len=Math.hypot(f,strafe);
    f/=len; strafe/=len;
-   let speed=down('ShiftLeft','ShiftRight')?3.15:1.62;
+   let speed=(down('ShiftLeft','ShiftRight')||mobileInput.run)?3.15:1.62;
    let dx=Math.cos(player.dir)*f + Math.cos(player.dir+Math.PI/2)*strafe;
    let dy=Math.sin(player.dir)*f + Math.sin(player.dir+Math.PI/2)*strafe;
    tryMove(player,player.x+dx*speed*dt,player.y+dy*speed*dt);
@@ -1660,8 +1665,16 @@ function clearPressed(){pressed.clear();}
 window.addEventListener('blur',clearPressed);
 window.addEventListener('focus',clearPressed);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)clearPressed()});
-// Ver.1.5.3 mobile-only bridge: rotate the existing cave player from touch look.
-// Kept inside the original IIFE so no game state is exposed globally.
+// Ver.1.5.4 mobile-only direct control bridge.
+// Touch UI talks directly to the cave's existing state instead of emulating keyboard events.
+const mobileInput={f:0,strafe:0,run:false};
+document.addEventListener('cave-mobile-move',e=>{
+  const d=e.detail||{};
+  mobileInput.f=Math.max(-1,Math.min(1,Number(d.f)||0));
+  mobileInput.strafe=Math.max(-1,Math.min(1,Number(d.strafe)||0));
+});
+document.addEventListener('cave-mobile-run',e=>{mobileInput.run=!!(e.detail&&e.detail.on)});
+document.addEventListener('cave-mobile-interact',()=>{if(running&&gameState==='playing')interact()});
 document.addEventListener('cave-mobile-look',e=>{
   if(!running||gameState!=='playing')return;
   const dx=Number(e.detail&&e.detail.dx)||0;
@@ -1723,10 +1736,15 @@ startBtn.addEventListener('click',()=>{
   reset();
   canvas.focus();
   canvas.style.cursor='crosshair';
-  try{
-    canvas.requestPointerLock();
-  }catch(_){
-    showMessage('画面をクリックするとマウス視点が始まります。',2200);
+  const touchMobile=matchMedia("(hover:none) and (pointer:coarse)").matches||navigator.maxTouchPoints>0;
+  if(touchMobile){
+    document.body.classList.add('mobile-playing');
+  }else{
+    try{
+      canvas.requestPointerLock();
+    }catch(_){
+      showMessage('画面をクリックするとマウス視点が始まります。',2200);
+    }
   }
 });
 restartBtn.addEventListener('click',()=>{
@@ -1770,12 +1788,10 @@ reset();requestAnimationFrame(loop);
    const caveStartBtn=document.getElementById("startBtn");
    if(caveStartBtn)caveStartBtn.addEventListener("click",()=>{mobileControls.style.display="block"},{once:true});
  }
- const held=new Set();
- function fire(type,code,key){document.dispatchEvent(new KeyboardEvent(type,{key,code,bubbles:true,cancelable:true}))}
- function set(code,on,key){if(on&&!held.has(code)){held.add(code);fire("keydown",code,key)}else if(!on&&held.has(code)){held.delete(code);fire("keyup",code,key)}}
- function clear(){set("KeyW",0,"w");set("KeyA",0,"a");set("KeyS",0,"s");set("KeyD",0,"d");knob.style.transform="translate(0,0)"}
+ function send(name,detail){document.dispatchEvent(new CustomEvent(name,{detail}))}
+ function clear(){send("cave-mobile-move",{f:0,strafe:0});knob.style.transform="translate(0,0)"}
  let sid=null,cx=0,cy=0;
- function sm(x,y){let dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)||1,m=47;if(d>m){dx*=m/d;dy*=m/d}knob.style.transform=`translate(${dx}px,${dy}px)`;let q=12;set("KeyW",dy<-q,"w");set("KeyS",dy>q,"s");set("KeyA",dx<-q,"a");set("KeyD",dx>q,"d")}
+ function sm(x,y){let dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)||1,m=47;if(d>m){dx*=m/d;dy*=m/d}knob.style.transform=`translate(${dx}px,${dy}px)`;let q=12;let f=Math.abs(dy)>q?-dy/m:0;let strafe=Math.abs(dx)>q?dx/m:0;send("cave-mobile-move",{f,strafe})}
  stick.onpointerdown=e=>{sid=e.pointerId;stick.setPointerCapture(sid);let r=stick.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;sm(e.clientX,e.clientY);e.preventDefault()};
  stick.onpointermove=e=>{if(e.pointerId===sid){sm(e.clientX,e.clientY);e.preventDefault()}};
  stick.onpointerup=stick.onpointercancel=e=>{if(sid===null||e.pointerId===sid){sid=null;clear();e.preventDefault()}};
@@ -1786,8 +1802,8 @@ reset();requestAnimationFrame(loop);
    e.preventDefault()
  };
  look.onpointerup=look.onpointercancel=e=>{if(lid===null||e.pointerId===lid){lid=null;e.preventDefault()}};
- eb.onpointerdown=e=>{e.preventDefault();fire("keydown","KeyE","e");setTimeout(()=>fire("keyup","KeyE","e"),70)};
- let fast=false;run.onpointerdown=e=>{e.preventDefault();fast=!fast;set("ShiftLeft",fast,"Shift");run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
- window.addEventListener("blur",()=>{clear();if(fast){fast=false;set("ShiftLeft",0,"Shift")}});
+ eb.onpointerdown=e=>{e.preventDefault();e.stopPropagation();send("cave-mobile-interact",{})};
+ let fast=false;run.onpointerdown=e=>{e.preventDefault();e.stopPropagation();fast=!fast;send("cave-mobile-run",{on:fast});run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
+ window.addEventListener("blur",()=>{clear();if(fast){fast=false;send("cave-mobile-run",{on:false})}});
 })();
 </script></body></html>
