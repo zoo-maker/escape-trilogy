@@ -441,6 +441,7 @@ const floorTransfers=[
 
 let floor=0,player={...starts[0]},running=false,last=0,msgTimer=0;
 const keys={};
+const hotelTouchMobile=matchMedia("(hover:none) and (pointer:coarse)").matches||navigator.maxTouchPoints>0;
 // Ver.7.61 FINAL — rooftop escape door visible for manual inspection.
 let rooftopEscapeDoorVisible=false;
 let rooftopCountdownStarted=false;
@@ -623,7 +624,7 @@ function closeSecurityKeypad(){
  keypadOverlay.style.display="none";
  keypadValue="";
  // Ver.7.69 — return mouse-look immediately when leaving the 2F security keypad.
- if(running && document.pointerLockElement!==canvas){
+ if(!hotelTouchMobile && running && document.pointerLockElement!==canvas){
    try{canvas.requestPointerLock();}catch(e){}
  }
 }
@@ -3679,13 +3680,33 @@ addEventListener("keydown",e=>{
  if(e.code==="KeyE")interact();
 });
 addEventListener("keyup",e=>keys[e.code]=false);
-canvas.addEventListener("click",()=>{if(running)canvas.requestPointerLock()});
+
+// Ver.1.5.6 — touch input is connected inside the hotel game closure.
+// This avoids synthetic keyboard/pointer-lock behavior on phones.
+document.addEventListener("hotel-mobile-move",e=>{
+ const d=e.detail||{},f=Number(d.f)||0,r=Number(d.strafe)||0;
+ keys.KeyW=f>.12;keys.KeyS=f<-.12;keys.KeyD=r>.12;keys.KeyA=r<-.12;
+});
+document.addEventListener("hotel-mobile-run",e=>{keys.ShiftLeft=!!(e.detail&&e.detail.on)});
+document.addEventListener("hotel-mobile-interact",()=>{if(running&&!keypadOpen)interact()});
+document.addEventListener("hotel-mobile-look",e=>{
+ if(!running||keypadOpen)return;
+ const dx=Number(e.detail&&e.detail.dx)||0;
+ if(inRoom201)roomPlayer201.dir+=dx*.003;
+ else if(inRoom218)roomPlayer218.dir+=dx*.003;
+ else if(inRoom209)roomPlayer209.dir+=dx*.003;
+ else if(inRoom203)roomPlayer203.dir+=dx*.003;
+ else if(inRoom214)roomPlayer.dir+=dx*.003;
+ else player.dir+=dx*.003;
+});
+canvas.addEventListener("click",()=>{if(running&&!hotelTouchMobile)canvas.requestPointerLock()});
 document.addEventListener("mousemove",e=>{
  if(document.pointerLockElement===canvas){if(inRoom201)roomPlayer201.dir+=e.movementX*.00235;else if(inRoom218)roomPlayer218.dir+=e.movementX*.00235;else if(inRoom209)roomPlayer209.dir+=e.movementX*.00235;else if(inRoom203)roomPlayer203.dir+=e.movementX*.00235;else if(inRoom214)roomPlayer.dir+=e.movementX*.00235;else player.dir+=e.movementX*.00235;}
 });
 startBtn.addEventListener("click",()=>{
  start.style.display="none";running=true;last=performance.now();
- canvas.requestPointerLock();showMessage("1F — HOTEL LOBBY",1300);requestAnimationFrame(loop);
+ if(!hotelTouchMobile)canvas.requestPointerLock();
+ showMessage("1F — HOTEL LOBBY",1300);requestAnimationFrame(loop);
 });
 floorName.textContent=FLOOR_NAMES[floor];
 document.getElementById("monsterRetry").addEventListener("click",()=>location.reload());
@@ -3695,29 +3716,27 @@ draw();
 (()=>{
  const mobile=matchMedia("(hover:none) and (pointer:coarse)").matches||navigator.maxTouchPoints>0;if(!mobile)return;
  const stick=document.getElementById("mcStick"),knob=document.getElementById("mcKnob"),look=document.getElementById("mcLook"),eb=document.getElementById("mcE"),run=document.getElementById("mcRun");
- const held=new Set();
- function fire(type,code,key){window.dispatchEvent(new KeyboardEvent(type,{key,code,bubbles:true,cancelable:true}))}
- function set(code,on,key){if(on&&!held.has(code)){held.add(code);fire("keydown",code,key)}else if(!on&&held.has(code)){held.delete(code);fire("keyup",code,key)}}
- function clear(){set("KeyW",0,"w");set("KeyA",0,"a");set("KeyS",0,"s");set("KeyD",0,"d");knob.style.transform="translate(0,0)"}
+ const send=(name,detail={})=>document.dispatchEvent(new CustomEvent(name,{detail}));
+ function clear(){send("hotel-mobile-move",{f:0,strafe:0});knob.style.transform="translate(0,0)"}
  let sid=null,cx=0,cy=0;
- function sm(x,y){let dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)||1,m=47;if(d>m){dx*=m/d;dy*=m/d}knob.style.transform=`translate(${dx}px,${dy}px)`;let q=12;set("KeyW",dy<-q,"w");set("KeyS",dy>q,"s");set("KeyA",dx<-q,"a");set("KeyD",dx>q,"d")}
- stick.onpointerdown=e=>{sid=e.pointerId;stick.setPointerCapture(sid);let r=stick.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;sm(e.clientX,e.clientY);e.preventDefault()};
+ function sm(x,y){
+   let dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)||1,m=47;
+   if(d>m){dx*=m/d;dy*=m/d}
+   knob.style.transform=`translate(${dx}px,${dy}px)`;
+   const q=8;
+   send("hotel-mobile-move",{f:Math.abs(dy)>q?-dy/m:0,strafe:Math.abs(dx)>q?dx/m:0});
+ }
+ stick.onpointerdown=e=>{sid=e.pointerId;stick.setPointerCapture(sid);let r=stick.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;sm(e.clientX,e.clientY);e.preventDefault();e.stopPropagation()};
  stick.onpointermove=e=>{if(e.pointerId===sid){sm(e.clientX,e.clientY);e.preventDefault()}};
  stick.onpointerup=stick.onpointercancel=e=>{if(sid===null||e.pointerId===sid){sid=null;clear();e.preventDefault()}};
  let lid=null,lx=0;
  look.onpointerdown=e=>{lid=e.pointerId;lx=e.clientX;look.setPointerCapture(lid);e.preventDefault()};
- look.onpointermove=e=>{if(e.pointerId!==lid)return;let dx=e.clientX-lx;lx=e.clientX;try{
-   if(typeof inRoom201!=="undefined"&&inRoom201)roomPlayer201.dir+=dx*.003;
-   else if(typeof inRoom218!=="undefined"&&inRoom218)roomPlayer218.dir+=dx*.003;
-   else if(typeof inRoom209!=="undefined"&&inRoom209)roomPlayer209.dir+=dx*.003;
-   else if(typeof inRoom203!=="undefined"&&inRoom203)roomPlayer203.dir+=dx*.003;
-   else if(typeof inRoom214!=="undefined"&&inRoom214)roomPlayer.dir+=dx*.003;
-   else if(typeof player!=="undefined")player.dir+=dx*.003;
- }catch(_){}e.preventDefault()};
+ look.onpointermove=e=>{if(e.pointerId!==lid)return;let dx=e.clientX-lx;lx=e.clientX;send("hotel-mobile-look",{dx});e.preventDefault()};
  look.onpointerup=look.onpointercancel=e=>{if(lid===null||e.pointerId===lid){lid=null;e.preventDefault()}};
- eb.onpointerdown=e=>{e.preventDefault();fire("keydown","KeyE","e");setTimeout(()=>fire("keyup","KeyE","e"),70)};
- let fast=false;run.onpointerdown=e=>{e.preventDefault();fast=!fast;set("ShiftLeft",fast,"Shift");run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
- window.addEventListener("blur",()=>{clear();if(fast){fast=false;set("ShiftLeft",0,"Shift")}});
+ eb.onpointerdown=e=>{e.preventDefault();e.stopPropagation();send("hotel-mobile-interact")};
+ let fast=false;
+ run.onpointerdown=e=>{e.preventDefault();e.stopPropagation();fast=!fast;send("hotel-mobile-run",{on:fast});run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
+ window.addEventListener("blur",()=>{clear();if(fast){fast=false;send("hotel-mobile-run",{on:false})}});
 })();
 </script></body>
 </html>
