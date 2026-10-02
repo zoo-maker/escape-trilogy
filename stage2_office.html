@@ -1708,5 +1708,38 @@ requestAnimationFrame(loop);
  let fast=false;run.onpointerdown=e=>{e.preventDefault();fast=!fast;set("ShiftLeft",fast,"Shift");run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
  window.addEventListener("blur",()=>{clear();if(fast){fast=false;set("ShiftLeft",0,"Shift")}});
 })();
-</script></body>
+</script>
+<script>
+/* Ver.1.5.7 — mobile fullscreen only.
+   No game/control/state logic is changed. */
+(()=>{
+  const isTouchMobile =
+    matchMedia("(hover:none) and (pointer:coarse)").matches ||
+    navigator.maxTouchPoints > 0;
+  if(!isTouchMobile) return;
+
+  async function enterGameFullscreen(){
+    try{
+      const hostDoc = (window.parent && window.parent !== window)
+        ? window.parent.document
+        : document;
+      if(hostDoc.fullscreenElement) return;
+      const root = hostDoc.documentElement;
+      if(root && root.requestFullscreen){
+        await root.requestFullscreen({navigationUI:"hide"});
+      }
+    }catch(_){}
+  }
+
+  // Fullscreen API requires a genuine user gesture.
+  // Re-arm on every stage so a stage transition/browser exit can recover
+  // on the player's next touch without affecting controls.
+  document.addEventListener("pointerdown", enterGameFullscreen, {
+    passive:true,
+    capture:true
+  });
+})();
+</script>
+
+</body>
 </html>
