@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CAVE ESCAPE - Stage 1 COMPLETE</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050607;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eee}#game{position:relative;width:100vw;height:100vh;background:#000}canvas{display:block;width:100%;height:100%}#hud{position:absolute;inset:0;pointer-events:none}#topbar{position:absolute;top:18px;left:18px;right:18px;display:flex;justify-content:space-between;gap:12px}.panel{background:rgba(0,0,0,.42);border:1px solid rgba(130,210,255,.22);border-radius:12px;padding:10px 14px;backdrop-filter:blur(3px);box-shadow:0 8px 30px rgba(0,0,0,.3)}#objective{max-width:560px;font-size:14px;line-height:1.45}#stats{text-align:right;font-size:13px;min-width:220px}#altarGuide{position:absolute;left:50%;top:18px;transform:translateX(-50%);display:none;min-width:260px;text-align:center;font-weight:800;background:rgba(5,13,17,.82);border:1px solid rgba(105,226,255,.48);border-radius:12px;padding:9px 16px;box-shadow:0 0 22px rgba(60,210,255,.16)}
+#guideArrow{display:inline-block;font-size:22px;margin-right:8px;color:#8aeeff;text-shadow:0 0 10px #50dfff}
+#crosshair{position:absolute;top:50%;left:50%;width:10px;height:10px;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:50%;opacity:.8}#message{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);padding:10px 16px;border-radius:10px;background:rgba(0,0,0,.68);border:1px solid rgba(255,255,255,.18);font-weight:700;opacity:0;transition:opacity .2s;text-align:center;min-width:300px}.show{opacity:1!important}#danger{position:absolute;inset:0;box-shadow:inset 0 0 180px rgba(170,0,0,0);transition:.2s}#danger.on{box-shadow:inset 0 0 200px rgba(180,0,0,.48)}#vignette{position:absolute;inset:0;background:radial-gradient(circle,transparent 46%,rgba(0,0,0,.22) 72%,rgba(0,0,0,.75) 100%)}#start,#overlay{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(circle at center,rgba(26,43,49,.84),rgba(0,0,0,.96));z-index:5}#overlay{display:none}.card{width:min(700px,calc(100vw - 32px));padding:28px;border-radius:18px;border:1px solid rgba(145,215,255,.2);background:rgba(7,12,15,.92);box-shadow:0 28px 80px rgba(0,0,0,.6)}h1,h2{margin:0 0 12px;letter-spacing:.08em}h1{font-size:clamp(28px,5vw,48px)}.sub{opacity:.75;margin-bottom:18px}.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin:18px 0;font-size:14px}.controls span{padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.055)}button{pointer-events:auto;border:0;border-radius:10px;padding:12px 18px;font-size:16px;font-weight:800;cursor:pointer;background:#e7e7df;color:#111}.sigils{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}.sigil{width:40px;height:48px;border:1px solid #9d8559;border-radius:5px;display:grid;place-items:center;background:#2d2b25;color:#d5bc78;opacity:.22;font-weight:800}.sigil.on{opacity:1;box-shadow:0 0 12px #d7bd7666}@media(max-width:620px){.controls{grid-template-columns:1fr}#topbar{flex-direction:column}#stats{text-align:left}}
+
+
+
+
+#playerView{
+  position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,.55));
+}
+.gloveRig{
+  position:absolute;bottom:-3%;width:20%;height:35%;
+  transform-origin:50% 100%;
+}
+.leftRig{left:5%;transform:rotate(3deg)}
+.rightRig{right:5%;transform:rotate(-3deg)}
+
+.cable{
+  position:absolute;width:12%;height:90%;bottom:-34%;left:44%;
+  border-radius:7px;opacity:.95;
+  box-shadow:inset 0 0 5px rgba(255,255,255,.12),0 6px 15px rgba(0,0,0,.5);
+}
+.cableBlue{background:repeating-linear-gradient(90deg,#10233a 0 5px,#286ba5 5px 9px,#0b1726 9px 14px)}
+.cableRed{background:repeating-linear-gradient(90deg,#3b1115 0 5px,#a52c35 5px 9px,#250b0e 9px 14px)}
+
+.wristUnit{
+  position:absolute;left:30%;bottom:7%;width:42%;height:25%;
+  background:linear-gradient(180deg,#41494b,#181d1e 58%,#0b0e0f);
+  border:2px solid rgba(255,255,255,.1);border-radius:9px;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,.08),0 10px 18px rgba(0,0,0,.48);
+}
+.wristBand{position:absolute;left:9%;right:9%;bottom:12%;height:18%;background:#090b0c;border-radius:4px}
+.wristLight{
+  position:absolute;left:50%;top:15%;width:13%;aspect-ratio:1;transform:translateX(-50%);
+  border-radius:50%;background:#c9fff3;box-shadow:0 0 9px rgba(163,255,236,.8);
+}
+
+.glove{position:absolute;left:7%;top:-1%;width:86%;height:74%}
+
+/* Palm starts BELOW the finger bases so the four fingers visibly grow from its top edge. */
+.palm{
+  position:absolute;left:20%;top:39%;width:61%;height:42%;
+  border-radius:9px 9px 15px 15px;
+  clip-path:polygon(4% 0,96% 0,100% 15%,95% 100%,7% 100%,0 15%);
+  box-shadow:inset 5px 6px 8px rgba(255,255,255,.13),
+             inset -7px -8px 10px rgba(0,0,0,.24),
+             0 8px 15px rgba(0,0,0,.3);
+}
+.palmPad{
+  position:absolute;left:30%;top:35%;width:40%;height:31%;
+  border-radius:6px;box-shadow:inset 0 0 7px rgba(0,0,0,.18);
+}
+
+/* Straight fingers. Their bottoms meet the top of the palm instead of overlapping its face. */
+.finger{
+  position:absolute;display:block;border-radius:8px 8px 4px 4px;
+  box-shadow:inset 3px 3px 5px rgba(255,255,255,.14),
+             inset -3px -5px 6px rgba(0,0,0,.18),
+             0 3px 6px rgba(0,0,0,.25);
+  transform-origin:50% 100%;
+}
+.index{width:14%;height:41%;left:25%;top:1%;transform:rotate(-2deg)}
+.middle{width:15%;height:46%;left:40%;top:-4%;transform:none}
+.ring{width:14%;height:42%;left:56%;top:0;transform:rotate(2deg)}
+.pinky{width:13%;height:35%;left:71%;top:7%;transform:rotate(4deg)}
+
+/* Thumb defaults for the RIGHT hand: thumb on the inner/left side. */
+.thumb{
+  width:15%;height:31%;left:8%;top:45%;
+  border-radius:7px 7px 5px 5px;
+  transform:rotate(-30deg);
+}
+
+/* LEFT hand is anatomically mirrored: thumb on the inner/right side. */
+.leftRig .thumb{
+  left:auto;right:7%;top:45%;
+  transform:rotate(30deg);
+}
+
+/* Small knuckle bridge visually connects fingers and palm. */
+.palm::before{
+  content:"";position:absolute;left:8%;right:8%;top:-7%;height:13%;
+  border-radius:6px 6px 2px 2px;background:inherit;
+  box-shadow:inset 0 3px 4px rgba(255,255,255,.08);
+}
+
+.blueGlove .palm,.blueGlove .finger{
+  background:linear-gradient(145deg,#9b6cff 0%,#7c3aed 52%,#4c1d95 100%);
+}
+.redGlove .palm,.redGlove .finger{
+  background:linear-gradient(145deg,#c7f36a 0%,#84cc16 52%,#4d7c0f 100%);
+}
+.blueGlove .palmPad{background:linear-gradient(145deg,#efe7ff,#bda6ff)}
+.redGlove .palmPad{background:linear-gradient(145deg,#efffc8,#b8e86d)}
+
+.leftRig .glove{transform:rotate(-2deg)}
+.rightRig .glove{transform:rotate(2deg)}
+
+@media (max-width:1000px){.gloveRig{width:23%;height:33%}}
+
+#blueFlash{
+  position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at center,
+    rgba(225,252,255,.98) 0%,
+    rgba(88,218,255,.72) 28%,
+    rgba(28,117,235,.42) 58%,
+    rgba(0,35,110,0) 100%);
+}
+#blueFlash.activation{animation:crystalActivation .95s ease-out}
+#blueFlash.transfer{animation:crystalTransfer .82s ease-in-out}
+@keyframes crystalActivation{
+  0%{opacity:0}
+  18%{opacity:.68}
+  42%{opacity:.18}
+  62%{opacity:.42}
+  100%{opacity:0}
+}
+@keyframes crystalTransfer{
+  0%{opacity:0}
+  24%{opacity:.55}
+  58%{opacity:1}
+  100%{opacity:.18}
+}
+
+
+#captureFlash{
+  position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(circle at center,rgba(255,235,225,.72) 0%,rgba(185,0,0,.78) 28%,rgba(65,0,0,.95) 72%,rgba(0,0,0,.98) 100%);
+}
+#captureFlash.hit{animation:captureHit .72s ease-out}
+@keyframes captureHit{
+  0%{opacity:0;transform:scale(1)}
+  10%{opacity:1;transform:scale(1.025)}
+  24%{opacity:.55;transform:scale(.99)}
+  42%{opacity:.95;transform:scale(1.018)}
+  100%{opacity:0;transform:scale(1)}
+}
+
+</style>
+<style>/* V1.5 MOBILE ONLY */
+#mobileControls{display:none;position:fixed;inset:0;z-index:2147483000;pointer-events:none;touch-action:none;user-select:none}
+.mc-stick{position:absolute;left:18px;bottom:20px;width:148px;height:148px;border-radius:50%;background:rgba(8,10,14,.32);border:2px solid rgba(255,255,255,.30);pointer-events:auto;touch-action:none}
+.mc-knob{position:absolute;left:47px;top:47px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.44);border:2px solid rgba(255,255,255,.68);box-sizing:border-box}
+.mc-look{position:absolute;left:42%;right:0;top:0;bottom:0;pointer-events:auto;touch-action:none}
+.mc-e{position:absolute;right:22px;bottom:28px;width:84px;height:84px;border-radius:50%;border:2px solid rgba(255,255,255,.74);background:rgba(18,22,28,.58);color:#fff;font:900 30px system-ui;pointer-events:auto}
+.mc-e span{display:block;font-size:10px}.mc-run{position:absolute;right:120px;bottom:42px;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.52);background:rgba(18,22,28,.48);color:#fff;font:800 11px system-ui;pointer-events:auto}
+@media (hover:none) and (pointer:coarse){#mobileControls{display:block}html,body{overscroll-behavior:none}}
+</style></head>
+<body>
+<div id="game"><canvas id="canvas" width="1100" height="620" tabindex="0"></canvas>
+
+<div id="playerView" aria-hidden="true">
+  <div class="gloveRig leftRig">
+    <div class="cable cableBlue"></div>
+    <div class="wristUnit">
+      <div class="wristBand"></div>
+      <div class="wristLight"></div>
+    </div>
+    <div class="glove blueGlove">
+      <div class="palm">
+        <div class="palmPad"></div>
+      </div>
+      <span class="finger thumb"></span>
+      <span class="finger index"></span>
+      <span class="finger middle"></span>
+      <span class="finger ring"></span>
+      <span class="finger pinky"></span>
+    </div>
+  </div>
+
+  <div class="gloveRig rightRig">
+    <div class="cable cableRed"></div>
+    <div class="wristUnit">
+      <div class="wristBand"></div>
+      <div class="wristLight"></div>
+    </div>
+    <div class="glove redGlove">
+      <div class="palm">
+        <div class="palmPad"></div>
+      </div>
+      <span class="finger thumb"></span>
+      <span class="finger index"></span>
+      <span class="finger middle"></span>
+      <span class="finger ring"></span>
+      <span class="finger pinky"></span>
+    </div>
+  </div>
+</div>
+<div id="hud"><div id="topbar"><div id="objective" class="panel"><strong>STAGE 1 / 蒼晶洞窟</strong><br>複雑な洞窟迷路を探索し、分岐の奥や行き止まりに隠された石板を3枚探そう。石板は通路の真ん中には置かれていない。</div><div id="stats" class="panel">石板 <b id="tabletCount">0 / 3</b><br>状態 <b id="statusText">探索中</b><div class="sigils"><div id="s0" class="sigil">◜</div><div id="s1" class="sigil">●</div><div id="s2" class="sigil">◝</div></div></div></div><div id="altarGuide"><span id="guideArrow">▲</span><span id="guideText">祭壇</span></div><div id="crosshair"></div><div id="message"></div><div id="danger"></div><div id="blueFlash"></div><div id="captureFlash"></div><div id="vignette"></div></div>
+<div id="start"><div class="card"><h1>CAVE ESCAPE</h1><div class="sub">Stage 1 — 蒼晶洞窟・完成版</div><p>迷路状の洞窟を探索し、3枚の石板を集めてください。石板は単なる鍵ではなく、最後に3枚を合わせると一つの絵になる古代のパズルです。</p><p>洞窟内には異形が徘徊しています。見つかると追跡されます。</p><p><strong>青い小さな水晶は洞窟の装飾です。転移門は最深部の祭壇で石板3枚を完成させた後に、1つだけ出現します。</strong></p><div class="controls"><span>W / S：前進・後退</span><span>A / D：左右移動</span><span>マウス：左右を見る（FPS固定）</span><span>Shift：ダッシュ</span><span>E：調べる・拾う</span><span>← →：旋回補助</span></div><button id="startBtn">洞窟に入る</button></div></div>
+<div id="overlay"><div class="card"><h2 id="overlayTitle"></h2><p id="overlayText"></p><button id="restartBtn">もう一度プレイ</button></div></div></div>
+<script>
+(()=>{
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const start=document.getElementById('start'),overlay=document.getElementById('overlay'),startBtn=document.getElementById('startBtn'),restartBtn=document.getElementById('restartBtn');
+const msgEl=document.getElementById('message'),tabletCountEl=document.getElementById('tabletCount'),statusText=document.getElementById('statusText'),danger=document.getElementById('danger'),overlayTitle=document.getElementById('overlayTitle'),overlayText=document.getElementById('overlayText'),altarGuide=document.getElementById('altarGuide'),guideArrow=document.getElementById('guideArrow'),guideText=document.getElementById('guideText'),blueFlash=document.getElementById('blueFlash'),captureFlash=document.getElementById('captureFlash');
+const map=[
+'111111111111111111111111',
+'100000000000000000000111',
+'100000000000000000000111',
+'111111111001000001100111',
+'111111100001000000000111',
+'111111100001111110000111',
+'111110000000000000000111',
+'110000000000000000000111',
+'110000011111000011111111',
+'110010011111000000000011',
+'110010011111000000000011',
+'111110000000000000011111',
+'111110000000000000011111',
+'111111110011111000011111',
+'110000000011111000011111',
+'110000000011111110011111',
+'111000000000000000011111',
+'111000000000000000011111',
+'111000000000000000000111',
+'111000000000000000000111',
+'111111111111111111111111'
+];
+const MAP_H=map.length,MAP_W=map[0].length;const playerStart={x:1.55,y:1.55,dir:.05};let player={...playerStart};
+const altar={x:18.0,y:19.0};const tablets=[{x:7.35,y:4.55,found:false,part:0},{x:21.45,y:9.55,found:false,part:1},{x:2.45,y:14.55,found:false,part:2}];
+const crystals=[{x:2.2,y:7.4},{x:12.5,y:3.4},{x:16.5,y:13.5}];const torches=[]; // Ver.13d: torches removed; cave is lit by the existing rendering only.
+let monster={x:13.5,y:8.5,dir:Math.PI,chasing:false,lastSeen:0,wanderTimer:0};const pressed=new Set();let running=false,lastTime=performance.now(),foundCount=0,messageTimer=0,gameState='playing',draggingView=false,altarSolved=false;
+
+// --- Ver.13a audio / atmosphere layer ---
+// Generated entirely with Web Audio: no external files, no network dependency.
+let audioCtx=null,masterGain=null,ambientGain=null,chaseGain=null,chaseOsc=null;
+let musicTimer=null,lastHeartbeat=0;
+
+function ensureAudio(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+
+    masterGain=audioCtx.createGain();
+    masterGain.gain.value=.34;
+    masterGain.connect(audioCtx.destination);
+
+    // Quiet cave-music drone.
+    ambientGain=audioCtx.createGain();
+    ambientGain.gain.value=.045;
+    const ambFilter=audioCtx.createBiquadFilter();
+    ambFilter.type='lowpass';ambFilter.frequency.value=360;
+    ambientGain.connect(ambFilter);ambFilter.connect(masterGain);
+
+    [55,82.41].forEach((freq,i)=>{
+      const o=audioCtx.createOscillator();
+      const g=audioCtx.createGain();
+      o.type=i?'sine':'triangle';
+      o.frequency.value=freq;
+      g.gain.value=i?.22:.30;
+      o.connect(g);g.connect(ambientGain);o.start();
+    });
+
+    // Threat layer, normally silent.
+    chaseGain=audioCtx.createGain();
+    chaseGain.gain.value=0;
+    chaseOsc=audioCtx.createOscillator();
+    chaseOsc.type='sawtooth';
+    chaseOsc.frequency.value=43;
+    const threatFilter=audioCtx.createBiquadFilter();
+    threatFilter.type='lowpass';threatFilter.frequency.value=140;
+    chaseOsc.connect(threatFilter);threatFilter.connect(chaseGain);chaseGain.connect(masterGain);
+    chaseOsc.start();
+
+    // Sparse eerie musical notes.
+    musicTimer=setInterval(()=>{
+      if(!audioCtx || audioCtx.state!=='running' || !running || gameState!=='playing')return;
+      const notes=[110,123.47,138.59,146.83,164.81];
+      const f=notes[Math.floor(Math.random()*notes.length)];
+      const now=audioCtx.currentTime;
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.type='sine';o.frequency.setValueAtTime(f,now);
+      g.gain.setValueAtTime(.0001,now);
+      g.gain.exponentialRampToValueAtTime(.022,now+.35);
+      g.gain.exponentialRampToValueAtTime(.0001,now+2.8);
+      o.connect(g);g.connect(masterGain);o.start(now);o.stop(now+3);
+    },4200);
+  }
+  if(audioCtx.state==='suspended')audioCtx.resume();
+}
+
+function tone(freq,dur=.16,vol=.08,type='sine',delay=0){
+  ensureAudio();
+  const now=audioCtx.currentTime+delay;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,now);
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(vol,now+.015);
+  g.gain.exponentialRampToValueAtTime(.0001,now+dur);
+  o.connect(g);g.connect(masterGain);o.start(now);o.stop(now+dur+.03);
+}
+
+function playTabletSound(){
+  tone(392,.16,.075,'triangle',0);
+  tone(523.25,.20,.07,'sine',.08);
+  tone(659.25,.28,.055,'sine',.16);
+}
+
+function playActivationSound(){
+  ensureAudio();
+  const now=audioCtx.currentTime;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sawtooth';
+  o.frequency.setValueAtTime(95,now);
+  o.frequency.exponentialRampToValueAtTime(760,now+.82);
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(.095,now+.08);
+  g.gain.exponentialRampToValueAtTime(.0001,now+.88);
+  o.connect(g);g.connect(masterGain);o.start(now);o.stop(now+.92);
+  tone(880,.34,.045,'sine',.55);
+}
+
+function playTransferSound(){
+  ensureAudio();
+  const now=audioCtx.currentTime;
+  [170,255,382].forEach((f,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type=i===0?'triangle':'sine';
+    o.frequency.setValueAtTime(f,now);
+    o.frequency.exponentialRampToValueAtTime(f*3.2,now+.70);
+    g.gain.setValueAtTime(.0001,now);
+    g.gain.exponentialRampToValueAtTime(.08/(i+1),now+.08);
+    g.gain.exponentialRampToValueAtTime(.0001,now+.78);
+    o.connect(g);g.connect(masterGain);o.start(now);o.stop(now+.82);
+  });
+}
+
+function playHeartbeat(intensity=.35){
+  intensity=Math.max(0,Math.min(1,intensity));
+  ensureAudio();
+
+  const now=audioCtx.currentTime;
+  const strength=.15+.20*intensity;
+
+  // First heavy "DOKU"
+  const beat=(start,freq,vol,dur)=>{
+    const o=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    const f=audioCtx.createBiquadFilter();
+    o.type='sine';
+    o.frequency.setValueAtTime(freq,start);
+    o.frequency.exponentialRampToValueAtTime(freq*.58,start+dur);
+    f.type='lowpass';
+    f.frequency.value=150;
+    g.gain.setValueAtTime(.0001,start);
+    g.gain.exponentialRampToValueAtTime(vol,start+.012);
+    g.gain.exponentialRampToValueAtTime(.0001,start+dur);
+    o.connect(f);f.connect(g);g.connect(masterGain);
+    o.start(start);o.stop(start+dur+.02);
+  };
+
+  beat(now,72,strength,.19);
+  // Second slightly lower "N"
+  beat(now+.19,61,strength*.82,.23);
+
+  // Very short low body thump so it reads clearly as a heartbeat.
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='triangle';
+  o.frequency.setValueAtTime(42,now);
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(.055+.065*intensity,now+.018);
+  g.gain.exponentialRampToValueAtTime(.0001,now+.32);
+  o.connect(g);g.connect(masterGain);o.start(now);o.stop(now+.34);
+}
+
+function updateThreatAudio(d,chasing){
+  if(!audioCtx || !chaseGain)return;
+  const now=audioCtx.currentTime;
+
+  // 0 = edge of detection range, 1 = almost caught.
+  const proximity=Math.max(0,Math.min(1,(5.3-d)/4.84));
+  const dangerCurve=Math.pow(proximity,1.35);
+
+  // The low chase drone also rises as the monster closes in.
+  const target=chasing ? .014+.095*dangerCurve : 0;
+  chaseGain.gain.cancelScheduledValues(now);
+  chaseGain.gain.linearRampToValueAtTime(target,now+.10);
+
+  if(chasing){
+    // Stage the red effect so the final metre becomes dramatically redder.
+    let alpha,spread,red;
+    if(proximity<.35){
+      alpha=.14+.16*(proximity/.35);
+      spread=150+35*(proximity/.35);
+      red=145;
+    }else if(proximity<.70){
+      const p=(proximity-.35)/.35;
+      alpha=.30+.25*p;
+      spread=185+45*p;
+      red=175;
+    }else{
+      const p=(proximity-.70)/.30;
+      alpha=.55+.34*p;
+      spread=230+85*p;
+      red=205+35*p;
+    }
+
+    danger.style.boxShadow=
+      `inset 0 0 ${spread}px rgba(${Math.round(red)},0,0,${Math.min(.92,alpha)})`;
+    danger.style.background=
+      `radial-gradient(circle at center,rgba(110,0,0,0) 38%,rgba(155,0,0,${.04+.16*dangerCurve}) 70%,rgba(120,0,0,${.12+.34*dangerCurve}) 100%)`;
+
+    // Heartbeat becomes both louder and faster as capture approaches.
+    const t=performance.now();
+    const beatGap=1120-830*dangerCurve; // far: ~1.12s, near capture: ~0.29s
+    if(t-lastHeartbeat>beatGap){
+      lastHeartbeat=t;
+      playHeartbeat(dangerCurve);
+    }
+  }else{
+    danger.style.boxShadow='inset 0 0 180px rgba(170,0,0,0)';
+    danger.style.background='transparent';
+  }
+}
+
+function flashBlue(kind){
+  blueFlash.classList.remove('activation','transfer');
+  void blueFlash.offsetWidth;
+  blueFlash.classList.add(kind);
+  setTimeout(()=>blueFlash.classList.remove(kind),kind==='transfer'?900:1050);
+}
+
+
+function playCaptureSound(){
+  ensureAudio();
+  const now=audioCtx.currentTime;
+
+  // Sudden low impact.
+  const impact=audioCtx.createOscillator(),ig=audioCtx.createGain();
+  impact.type='sawtooth';
+  impact.frequency.setValueAtTime(105,now);
+  impact.frequency.exponentialRampToValueAtTime(34,now+.42);
+  ig.gain.setValueAtTime(.0001,now);
+  ig.gain.exponentialRampToValueAtTime(.24,now+.018);
+  ig.gain.exponentialRampToValueAtTime(.0001,now+.48);
+  impact.connect(ig);ig.connect(masterGain);impact.start(now);impact.stop(now+.50);
+
+  // Short dissonant screech.
+  [510,677].forEach((f,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type=i?'square':'sawtooth';
+    o.frequency.setValueAtTime(f,now+.025);
+    o.frequency.exponentialRampToValueAtTime(f*.58,now+.34);
+    g.gain.setValueAtTime(.0001,now);
+    g.gain.exponentialRampToValueAtTime(.065,now+.035);
+    g.gain.exponentialRampToValueAtTime(.0001,now+.38);
+    o.connect(g);g.connect(masterGain);o.start(now);o.stop(now+.40);
+  });
+}
+
+function capturePlayer(){
+  if(gameState!=='playing')return;
+  gameState='caught';
+  playCaptureSound();
+  captureFlash.classList.remove('hit');
+  void captureFlash.offsetWidth;
+  captureFlash.classList.add('hit');
+  document.exitPointerLock?.();
+  setTimeout(()=>endGame(false),560);
+}
+
+function beginTransfer(){
+  if(gameState!=='playing')return;
+  gameState='transferring';
+  playTransferSound();
+  flashBlue('transfer');
+  document.exitPointerLock?.();
+  setTimeout(()=>endGame(true),760);
+}
+
+function reset(){player={...playerStart};tablets.forEach(t=>t.found=false);monster={x:13.5,y:8.5,dir:Math.PI,chasing:false,lastSeen:0,wanderTimer:0};foundCount=0;altarSolved=false;gameState='playing';tabletCountEl.textContent='0 / 3';statusText.textContent='探索中';danger.classList.remove('on');altarGuide.style.display='none';overlay.style.display='none';[0,1,2].forEach(i=>document.getElementById('s'+i).classList.remove('on'));showMessage('石板を3枚探してください',1600)}
+function wallAt(x,y){let mx=Math.floor(x),my=Math.floor(y);return mx<0||my<0||mx>=MAP_W||my>=MAP_H||map[my][mx]==='1'}
+function canMove(x,y,r=.18){return !wallAt(x-r,y-r)&&!wallAt(x+r,y-r)&&!wallAt(x-r,y+r)&&!wallAt(x+r,y+r)}function tryMove(o,nx,ny,r=.18){if(canMove(nx,o.y,r))o.x=nx;if(canMove(o.x,ny,r))o.y=ny}function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}function norm(a){while(a<-Math.PI)a+=Math.PI*2;while(a>Math.PI)a-=Math.PI*2;return a}
+function los(ax,ay,bx,by){let d=Math.hypot(bx-ax,by-ay),steps=Math.ceil(d/.08);for(let i=1;i<steps;i++){let t=i/steps;if(wallAt(ax+(bx-ax)*t,ay+(by-ay)*t))return false}return true}
+function showMessage(t,ms=1200){msgEl.textContent=t;msgEl.classList.add('show');clearTimeout(messageTimer);messageTimer=setTimeout(()=>msgEl.classList.remove('show'),ms)}
+function interact(){
+  if(gameState!=='playing')return;
+
+  for(const t of tablets){
+    if(!t.found && Math.hypot(player.x-t.x,player.y-t.y)<1.08 && los(player.x,player.y,t.x,t.y)){
+      t.found=true;
+      foundCount++;
+      tabletCountEl.textContent=`${foundCount} / 3`;
+      document.getElementById('s'+t.part).classList.add('on');
+      playTabletSound();
+      if(foundCount===3){
+        playActivationSound();
+        flashBlue('activation');
+      }
+      showMessage(
+        foundCount<3
+          ? `石板の欠片を発見！ 残り ${3-foundCount} 枚`
+          : '3枚そろった！ 蒼晶転送装置が起動した。青い光を探そう。',
+        2600
+      );
+      return;
+    }
+  }
+
+  if(Math.hypot(player.x-altar.x,player.y-altar.y)<1.35){
+    if(foundCount<3){
+      showMessage(`青い水晶はまだ光らない。石板があと ${3-foundCount} 枚必要`,1800);
+      return;
+    }
+    beginTransfer();
+    return;
+  }
+
+  showMessage('ここには何もなさそうだ',700);
+}
+function endGame(win){
+ if(chaseGain&&audioCtx){const n=audioCtx.currentTime;chaseGain.gain.cancelScheduledValues(n);chaseGain.gain.linearRampToValueAtTime(0,n+.15);}
+ gameState=win?'won':'lost';document.exitPointerLock?.();
+ // Trilogy mode: a successful escape flows directly into the parent transition.
+ // Keep the original GAME OVER/retry UI for failure, but do not show a replay button between stages.
+ if(win && window.parent!==window){
+   overlay.style.display='none';
+   setTimeout(()=>window.parent.postMessage({type:'ESCAPE_STAGE_CLEAR',stage:1},window.location.protocol==='file:'?'*':window.location.origin),650);
+   return;
+ }
+ overlayTitle.textContent=win?'STAGE CLEAR':'GAME OVER';
+ overlayText.innerHTML=win?'3枚の石板がそろい、<strong>蒼晶転送装置</strong>が青く輝いた。<br><br>水晶に触れた瞬間、洞窟から転送された。<br><strong>STAGE 2 — 無人オフィスへ続く</strong>':'異形に捕まった。もう一度洞窟を探索しよう。';
+ overlay.style.display='grid';
+}
+function updateMonster(dt){
+ if(gameState!=='playing')return;
+ if(foundCount===0){
+   monster.chasing=false;
+   statusText.textContent='探索中';
+   danger.classList.remove('on');
+   updateThreatAudio(99,false);
+   return;
+ }
+
+ const tp=Math.atan2(player.y-monster.y,player.x-monster.x);
+ const d=dist(player,monster);
+ const clearSight=los(monster.x,monster.y,player.x,player.y);
+ const facingDiff=Math.abs(norm(tp-monster.dir));
+
+ // Ver.13b sensing:
+ // 1) Within 1.9 m, the monster notices the player from any direction if no wall blocks them.
+ // 2) From 1.9–5.3 m, it notices only when the player enters its forward field of view.
+ const nearNotice=d<1.9 && clearSight;
+ const forwardNotice=d<5.3 && clearSight && facingDiff<1.08;
+ const detected=nearNotice || forwardNotice;
+
+ if(detected){
+   const newlyDetected=!monster.chasing;
+   monster.chasing=true;
+   monster.lastSeen=performance.now();
+
+   // On the first detection frame, snap its attention toward the player.
+   // This makes "it saw me" visually obvious because the front face appears immediately.
+   if(newlyDetected)monster.dir=tp;
+ }
+
+ if(monster.chasing && performance.now()-monster.lastSeen>2200 && !clearSight){
+   monster.chasing=false;
+ }
+
+ const speed=monster.chasing?1.25:.38;
+
+ if(monster.chasing){
+   statusText.textContent='追跡されています';
+   danger.classList.add('on');
+   const target=Math.atan2(player.y-monster.y,player.x-monster.x);
+   monster.dir+=norm(target-monster.dir)*Math.min(1,dt*4.2);
+ }else{
+   statusText.textContent='探索中';
+   danger.classList.remove('on');
+   monster.wanderTimer-=dt;
+   if(monster.wanderTimer<=0){
+     monster.wanderTimer=1.8+Math.random()*2.8;
+     monster.dir+=(Math.random()-.5)*1.5;
+   }
+ }
+
+ const ox=monster.x,oy=monster.y;
+ tryMove(monster,monster.x+Math.cos(monster.dir)*speed*dt,monster.y+Math.sin(monster.dir)*speed*dt,.2);
+ if(Math.hypot(monster.x-ox,monster.y-oy)<.005){
+   monster.dir+=(Math.random()>.5?1:-1)*(Math.PI/2+Math.random()*.4);
+ }
+
+ updateThreatAudio(d,monster.chasing);
+ if(dist(player,monster)<.46)capturePlayer();
+}
+function down(...codes){return codes.some(c=>pressed.has(c))}
+
+function updateAltarGuide(){
+  if(foundCount<3 || gameState!=='playing'){
+    altarGuide.style.display='none';
+    return;
+  }
+  altarGuide.style.display='block';
+  const dx=altar.x-player.x,dy=altar.y-player.y;
+  const d=Math.hypot(dx,dy);
+  const rel=norm(Math.atan2(dy,dx)-player.dir);
+  let symbol='▲';
+  if(rel>0.42) symbol='▶';
+  if(rel<-0.42) symbol='◀';
+  if(Math.abs(rel)>2.5) symbol='▼';
+  guideArrow.textContent=symbol;
+  guideText.textContent=`蒼晶転送装置まで 約 ${Math.max(1,Math.round(d))} m`;
+}
+
+function update(dt){
+ if(!running||gameState!=='playing')return;
+ if(down('ArrowLeft'))player.dir-=1.5*dt;
+ if(down('ArrowRight'))player.dir+=1.5*dt;
+
+ let f=(down('KeyW')?1:0)-(down('KeyS')?1:0);
+ let strafe=(down('KeyD')?1:0)-(down('KeyA')?1:0);
+
+ if(f||strafe){
+   let len=Math.hypot(f,strafe);
+   f/=len; strafe/=len;
+   let speed=down('ShiftLeft','ShiftRight')?3.15:1.62;
+   let dx=Math.cos(player.dir)*f + Math.cos(player.dir+Math.PI/2)*strafe;
+   let dy=Math.sin(player.dir)*f + Math.sin(player.dir+Math.PI/2)*strafe;
+   tryMove(player,player.x+dx*speed*dt,player.y+dy*speed*dt);
+ }
+ updateMonster(dt);
+ updateAltarGuide();
+}
+function castRay(angle){let si=Math.sin(angle),co=Math.cos(angle),d=0;while(d<22){d+=.022;let x=player.x+co*d,y=player.y+si*d;if(wallAt(x,y))return{d,x,y}}return{d:22,x:player.x+co*22,y:player.y+si*22}}
+function spritePos(o,FOV){let dx=o.x-player.x,dy=o.y-player.y,d=Math.hypot(dx,dy),ang=norm(Math.atan2(dy,dx)-player.dir);if(Math.abs(ang)>FOV*.68||!los(player.x,player.y,o.x,o.y))return null;let sx=canvas.width/2+(ang/(FOV/2))*canvas.width/2,h=Math.min(canvas.height*1.8,canvas.height/d*1.35);return{d,ang,sx,h,sy:canvas.height/2+h*.1}}
+function drawCrystal(o,FOV){
+ let q=spritePos(o,FOV);if(!q)return;
+ let s=q.h*.105;
+ ctx.save();
+ ctx.translate(q.sx,q.sy+q.h*.18);
+ ctx.globalAlpha=.68;
+ ctx.shadowBlur=12;
+ ctx.shadowColor='#45bfe8';
+ ctx.fillStyle='rgba(58,156,190,.72)';
+ [-.18,0,.18].forEach((k,i)=>{
+   ctx.beginPath();
+   ctx.moveTo(k*s*2,s*.22);
+   ctx.lineTo(k*s*2+s*.11,-s*(.65-i*.08));
+   ctx.lineTo(k*s*2+s*.25,s*.22);
+   ctx.closePath();
+   ctx.fill();
+ });
+ ctx.restore();
+}
+function drawTorch(o,FOV){let q=spritePos(o,FOV);if(!q)return;let s=q.h*.14,t=performance.now()/160;ctx.save();ctx.translate(q.sx,q.sy-q.h*.16);ctx.shadowBlur=34;ctx.shadowColor='#ff8a24';// wall bracket
+ctx.strokeStyle='#4d3525';ctx.lineWidth=Math.max(2,s*.09);ctx.beginPath();ctx.moveTo(-s*.18,s*.42);ctx.lineTo(0,s*.16);ctx.lineTo(s*.18,s*.42);ctx.stroke();ctx.fillStyle='#5a3820';ctx.fillRect(-s*.055,-s*.02,s*.11,s*.62);// flame, layered and flickering
+let flick=Math.sin(t)*s*.035;ctx.fillStyle='#ff6f1f';ctx.beginPath();ctx.moveTo(0+flick,-s*.68);ctx.bezierCurveTo(-s*.24,-s*.42,-s*.20,-s*.17,0,-s*.10);ctx.bezierCurveTo(s*.23,-s*.18,s*.23,-s*.43,0+flick,-s*.68);ctx.fill();ctx.fillStyle='#ffd46a';ctx.beginPath();ctx.moveTo(0,-s*.53);ctx.bezierCurveTo(-s*.11,-s*.37,-s*.09,-s*.22,0,-s*.16);ctx.bezierCurveTo(s*.11,-s*.23,s*.10,-s*.39,0,-s*.53);ctx.fill();ctx.restore()}
+function drawTablet(t,FOV){let q=spritePos(t,FOV);if(!q)return;let s=q.h*.38;ctx.save();ctx.translate(q.sx,q.sy);ctx.shadowBlur=26;ctx.shadowColor='#f0c56f';ctx.fillStyle='#2f302d';ctx.strokeStyle='#77766b';ctx.lineWidth=Math.max(2,s*.025);ctx.beginPath();ctx.roundRect(-s*.34,s*.27,s*.68,s*.18,s*.03);ctx.fill();ctx.stroke();ctx.translate(0,-s*.05);ctx.rotate(-.05);ctx.shadowBlur=22;ctx.shadowColor='#d8b66d';ctx.fillStyle='#5b4b36';ctx.strokeStyle='#bc9859';ctx.lineWidth=Math.max(2,s*.035);ctx.beginPath();ctx.roundRect(-s*.28,-s*.44,s*.56,s*.78,s*.055);ctx.fill();ctx.stroke();ctx.strokeStyle='#e0c478';ctx.lineWidth=Math.max(2,s*.028);ctx.beginPath();if(t.part===0){ctx.arc(s*.16,-s*.05,s*.28,Math.PI*.55,Math.PI*1.45);ctx.moveTo(-s*.04,-s*.17);ctx.lineTo(s*.13,-s*.05);ctx.lineTo(-s*.04,s*.07)}else if(t.part===1){ctx.ellipse(0,-s*.05,s*.18,s*.11,0,0,7);ctx.moveTo(-s*.16,-s*.05);ctx.lineTo(s*.16,-s*.05)}else{ctx.arc(-s*.16,-s*.05,s*.28,-Math.PI*.45,Math.PI*.45);ctx.moveTo(s*.04,-s*.17);ctx.lineTo(-s*.13,-s*.05);ctx.lineTo(s*.04,s*.07)}ctx.stroke();if(q.d<1.25){ctx.fillStyle='#fff';ctx.font='bold 16px system-ui';ctx.textAlign='center';ctx.fillText('E：石板を取る',0,-s*.62)}ctx.restore()}
+function drawAltar(FOV){
+  let q=spritePos(altar,FOV);
+  if(!q)return;
+
+  const s=q.h*.72;
+  const active=foundCount===3;
+  const pulse=.86+.14*Math.sin(performance.now()/190);
+
+  ctx.save();
+  ctx.translate(q.sx,q.sy);
+
+  // Ground socket/shadow
+  ctx.fillStyle='rgba(0,0,0,.46)';
+  ctx.beginPath();
+  ctx.ellipse(0,s*.25,s*.42,s*.10,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Glow ONLY when all 3 tablets are held.
+  if(active){
+    ctx.save();
+    ctx.globalCompositeOperation='screen';
+    const aura=ctx.createRadialGradient(0,-s*.18,0,0,-s*.18,s*.72);
+    aura.addColorStop(0,`rgba(205,250,255,${.34*pulse})`);
+    aura.addColorStop(.32,`rgba(66,205,255,${.25*pulse})`);
+    aura.addColorStop(1,'rgba(0,65,180,0)');
+    ctx.fillStyle=aura;
+    ctx.beginPath();
+    ctx.ellipse(0,-s*.18,s*.72,s*.82,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Five-crystal cluster
+  const shards=[
+    [0,-.22,.26,.80,0],
+    [-.22,-.06,.19,.56,-.22],
+    [.22,-.05,.18,.54,.22],
+    [-.36,.09,.13,.36,-.38],
+    [.36,.09,.13,.34,.38]
+  ];
+
+  for(const sh of shards){
+    const [ox,oy,ww,hh,rot]=sh;
+    ctx.save();
+    ctx.translate(ox*s,oy*s);
+    ctx.rotate(rot);
+
+    const half=ww*s*.5;
+    const top=-hh*s*.58;
+    const bottom=hh*s*.40;
+
+    const g=ctx.createLinearGradient(-half,top,half,bottom);
+    if(active){
+      g.addColorStop(0,'#dffcff');
+      g.addColorStop(.18,'#74e6ff');
+      g.addColorStop(.56,'#1582d8');
+      g.addColorStop(1,'#062e70');
+      ctx.shadowBlur=22*pulse;
+      ctx.shadowColor='#39d8ff';
+    }else{
+      g.addColorStop(0,'#55717d');
+      g.addColorStop(.25,'#34515e');
+      g.addColorStop(.62,'#1d3541');
+      g.addColorStop(1,'#0c1a22');
+    }
+
+    ctx.fillStyle=g;
+    ctx.strokeStyle=active?'rgba(210,250,255,.92)':'rgba(91,116,126,.72)';
+    ctx.lineWidth=Math.max(1.5,s*.011);
+
+    ctx.beginPath();
+    ctx.moveTo(0,top);
+    ctx.lineTo(half*.82,top+hh*s*.21);
+    ctx.lineTo(half,bottom-hh*s*.07);
+    ctx.lineTo(0,bottom);
+    ctx.lineTo(-half,bottom-hh*s*.07);
+    ctx.lineTo(-half*.82,top+hh*s*.21);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Facet
+    ctx.shadowBlur=0;
+    ctx.fillStyle=active?'rgba(230,253,255,.22)':'rgba(160,190,200,.06)';
+    ctx.beginPath();
+    ctx.moveTo(0,top);
+    ctx.lineTo(half*.82,top+hh*s*.21);
+    ctx.lineTo(0,bottom);
+    ctx.lineTo(-half*.15,top+hh*s*.32);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Dark stone base
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#18191a';
+  ctx.strokeStyle='#383a3b';
+  ctx.lineWidth=Math.max(2,s*.016);
+  ctx.beginPath();
+  ctx.moveTo(-s*.40,s*.20);
+  ctx.lineTo(-s*.26,s*.08);
+  ctx.lineTo(s*.26,s*.08);
+  ctx.lineTo(s*.40,s*.20);
+  ctx.lineTo(s*.29,s*.31);
+  ctx.lineTo(-s*.29,s*.31);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  if(active && q.d<5.5){
+    ctx.fillStyle='#c9f8ff';
+    ctx.font='bold 18px system-ui';
+    ctx.textAlign='center';
+    ctx.shadowBlur=12;
+    ctx.shadowColor='#43d9ff';
+    ctx.fillText('◆ 蒼晶転送装置 ◆',0,-s*.78);
+    ctx.shadowBlur=0;
+  }
+
+  if(q.d<1.45){
+    ctx.fillStyle='#fff';
+    ctx.font='bold 16px system-ui';
+    ctx.textAlign='center';
+    ctx.fillText(active?'E：青い水晶に触れる':'E：青い水晶を調べる',0,-s*.58);
+  }
+
+  ctx.restore();
+}
+function drawPortal(q,s){
+ let t=performance.now()/550,x=0,y=-s*.04,r=s*.31;
+ ctx.save();
+ ctx.globalCompositeOperation='screen';
+ ctx.shadowBlur=34;ctx.shadowColor='#39d9ff';
+
+ // stone/energy ring
+ for(let i=0;i<7;i++){
+   ctx.strokeStyle=`rgba(63,220,255,${.18+i*.07})`;
+   ctx.lineWidth=Math.max(2,s*.012);
+   ctx.beginPath();
+   ctx.ellipse(x,y,r*(.88+i*.03),r*(1.18-i*.02),t*.35+i*.55,0,Math.PI*2);
+   ctx.stroke();
+ }
+ let g=ctx.createRadialGradient(0,y,0,0,y,r*1.2);
+ g.addColorStop(0,'rgba(232,254,255,.96)');
+ g.addColorStop(.18,'rgba(117,236,255,.85)');
+ g.addColorStop(.52,'rgba(27,129,210,.75)');
+ g.addColorStop(1,'rgba(0,20,55,0)');
+ ctx.fillStyle=g;
+ ctx.beginPath();ctx.ellipse(0,y,r*.72,r*1.08,0,0,Math.PI*2);ctx.fill();
+
+ ctx.strokeStyle='rgba(225,250,255,.95)';
+ ctx.lineWidth=Math.max(2,s*.018);
+ ctx.beginPath();
+ for(let a=0;a<Math.PI*4;a+=.18){
+   let rr=r*(.18+.045*a);
+   let px=Math.cos(a+t*1.6)*rr*.62;
+   let py=y+Math.sin(a+t*1.6)*rr*.84;
+   if(a===0)ctx.moveTo(px,py); else ctx.lineTo(px,py);
+ }
+ ctx.stroke();
+ ctx.restore();
+}
+function drawMonster(FOV){
+  const q=spritePos(monster,FOV);
+  if(!q)return;
+
+  const s=q.h*1.58;
+  const x=q.sx;
+  const y=q.sy+q.h*.22;
+  const chase=monster.chasing;
+  const t=performance.now()/1000;
+
+  // Determine which side of the monster the player is actually looking at.
+  // faceRel = 0 means monster faces player; PI means its back faces player.
+  const angleMonsterToPlayer=Math.atan2(player.y-monster.y,player.x-monster.x);
+  const faceRel=norm(angleMonsterToPlayer-monster.dir);
+  const absRel=Math.abs(faceRel);
+
+  let view='front';
+  if(absRel>Math.PI*.75){
+    view='back';
+  }else if(absRel>Math.PI*.25){
+    view=faceRel>0?'right':'left';
+  }
+
+  ctx.save();
+  ctx.translate(x,y);
+  const sway=Math.sin(t*(chase?7.5:2.2))*s*(chase?.009:.004);
+  ctx.translate(sway,0);
+
+  // Ground shadow
+  ctx.save();
+  ctx.globalAlpha=.5;
+  ctx.fillStyle="#000";
+  ctx.beginPath();
+  ctx.ellipse(0,s*.31,s*.27,s*.045,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Legs
+  ctx.strokeStyle="#030405";
+  ctx.lineCap="round";
+  ctx.lineWidth=Math.max(5,s*.045);
+  ctx.beginPath();
+  if(view==='left'||view==='right'){
+    ctx.moveTo(-s*.035,s*.03);ctx.lineTo(-s*.065,s*.31);
+    ctx.moveTo( s*.035,s*.03);ctx.lineTo( s*.075,s*.31);
+  }else{
+    ctx.moveTo(-s*.065,s*.03);ctx.lineTo(-s*.11,s*.31);
+    ctx.moveTo( s*.065,s*.03);ctx.lineTo( s*.11,s*.31);
+  }
+  ctx.stroke();
+
+  // Torso: narrower in side view.
+  const sideView=view==='left'||view==='right';
+  const torsoW=sideView?s*.105:s*.17;
+  let body=ctx.createLinearGradient(-torsoW,-s*.25,torsoW,s*.12);
+  body.addColorStop(0,"#020303");
+  body.addColorStop(.48,chase?"#160909":"#090c0d");
+  body.addColorStop(1,"#010101");
+  ctx.fillStyle=body;
+  ctx.beginPath();
+  ctx.moveTo(-torsoW,-s*.18);
+  ctx.lineTo(-torsoW*.63,-s*.27);
+  ctx.lineTo(0,-s*.235);
+  ctx.lineTo(torsoW*.63,-s*.27);
+  ctx.lineTo(torsoW,-s*.18);
+  ctx.lineTo(torsoW*.53,s*.07);
+  ctx.lineTo(-torsoW*.53,s*.07);
+  ctx.closePath();
+  ctx.fill();
+
+  // Front ribs only when chest is visible.
+  if(view==='front'){
+    ctx.strokeStyle=chase?"rgba(145,35,35,.34)":"rgba(115,125,125,.20)";
+    ctx.lineWidth=Math.max(1,s*.007);
+    for(let i=0;i<5;i++){
+      const yy=-s*.16+i*s*.038;
+      ctx.beginPath();
+      ctx.moveTo(-s*.10,yy);
+      ctx.quadraticCurveTo(0,yy+s*.018,s*.10,yy);
+      ctx.stroke();
+    }
+  }
+
+  // Back spine when the monster faces away.
+  if(view==='back'){
+    ctx.strokeStyle="rgba(82,92,92,.30)";
+    ctx.lineWidth=Math.max(1,s*.009);
+    ctx.beginPath();
+    ctx.moveTo(0,-s*.21);
+    ctx.lineTo(0,s*.035);
+    ctx.stroke();
+    for(let i=0;i<5;i++){
+      const yy=-s*.16+i*s*.042;
+      ctx.beginPath();
+      ctx.moveTo(-s*.065,yy);
+      ctx.lineTo(s*.065,yy+s*.006);
+      ctx.stroke();
+    }
+  }
+
+  // Long arms. Side view collapses far arm and shifts near arm.
+  ctx.strokeStyle="#030405";
+  ctx.lineWidth=Math.max(6,s*.044);
+  ctx.beginPath();
+  if(view==='front'||view==='back'){
+    ctx.moveTo(-s*.145,-s*.19);ctx.quadraticCurveTo(-s*.27,-s*.01,-s*.30,s*.25);
+    ctx.moveTo( s*.145,-s*.19);ctx.quadraticCurveTo( s*.27,-s*.01, s*.30,s*.25);
+  }else{
+    const dir=view==='right'?1:-1;
+    ctx.moveTo(-dir*s*.035,-s*.18);ctx.quadraticCurveTo(-dir*s*.08,s*.00,-dir*s*.10,s*.23);
+    ctx.moveTo( dir*s*.075,-s*.18);ctx.quadraticCurveTo( dir*s*.20,s*.00, dir*s*.23,s*.27);
+  }
+  ctx.stroke();
+
+  // Claws
+  ctx.lineWidth=Math.max(1.5,s*.010);
+  const hands=(view==='front'||view==='back')
+    ?[[-1,-s*.30,s*.245],[1,s*.30,s*.245]]
+    :(view==='right'
+      ?[[-1,-s*.10,s*.225],[1,s*.23,s*.265]]
+      :[[-1,-s*.23,s*.265],[1,s*.10,s*.225]]);
+  for(const [side,hx,hy] of hands){
+    for(let i=-2;i<=2;i++){
+      const spread=i*s*.010;
+      ctx.beginPath();
+      ctx.moveTo(hx,hy);
+      ctx.quadraticCurveTo(
+        hx+side*s*(.020+.006*Math.abs(i)),
+        hy+s*.035,
+        hx+side*s*(.038+.007*Math.abs(i))+spread,
+        hy+s*(.075+.006*Math.abs(i))
+      );
+      ctx.stroke();
+    }
+  }
+
+  // Neck
+  ctx.fillStyle="#030405";
+  const neckW=sideView?s*.025:s*.035;
+  ctx.fillRect(-neckW,-s*.385,neckW*2,s*.19);
+
+  // Head
+  ctx.save();
+  ctx.translate(0,-s*.47);
+  ctx.rotate(Math.sin(t*(chase?5.5:1.5))*(chase?.035:.014));
+
+  // Medusa-like hair/tendrils. Back view gets slightly wider silhouette.
+  ctx.strokeStyle="#020303";
+  ctx.lineCap="round";
+  ctx.lineWidth=Math.max(3,s*.022);
+  const tendrils=[
+    [-.105,-.13,-.20,-.25,-.26,-.17],
+    [-.075,-.16,-.12,-.30,-.19,-.29],
+    [-.035,-.18,-.04,-.34,-.10,-.37],
+    [ .005,-.19, .04,-.35, .02,-.40],
+    [ .045,-.18, .12,-.33, .11,-.38],
+    [ .080,-.16, .19,-.28, .20,-.32],
+    [ .110,-.12, .25,-.21, .27,-.15],
+    [-.12,-.08,-.27,-.13,-.29,-.05],
+    [ .12,-.08, .27,-.13, .29,-.04]
+  ];
+  tendrils.forEach((a,i)=>{
+    const widen=view==='back'?1.12:1;
+    const wig=Math.sin(t*(chase?5.0:2.0)+i*1.37)*s*.018;
+    ctx.beginPath();
+    ctx.moveTo(a[0]*s,a[1]*s);
+    ctx.bezierCurveTo(a[2]*s*widen+wig,a[3]*s,a[4]*s*widen-wig,a[5]*s,a[4]*s*widen+wig*.5,a[5]*s+s*.025);
+    ctx.stroke();
+  });
+
+  // Head silhouette differs clearly by orientation.
+  let head=ctx.createLinearGradient(-s*.14,-s*.17,s*.14,s*.16);
+  head.addColorStop(0,"#141718");
+  head.addColorStop(.52,"#050607");
+  head.addColorStop(1,"#010101");
+  ctx.fillStyle=head;
+
+  if(view==='front'||view==='back'){
+    ctx.beginPath();
+    ctx.moveTo(-s*.105,-s*.16);
+    ctx.lineTo(-s*.16,-s*.055);
+    ctx.lineTo(-s*.135,s*.09);
+    ctx.lineTo(-s*.075,s*.16);
+    ctx.lineTo(0,s*.185);
+    ctx.lineTo(s*.075,s*.16);
+    ctx.lineTo(s*.135,s*.09);
+    ctx.lineTo(s*.16,-s*.055);
+    ctx.lineTo(s*.105,-s*.16);
+    ctx.lineTo(0,-s*.205);
+    ctx.closePath();
+    ctx.fill();
+  }else{
+    const dir=view==='right'?1:-1;
+    ctx.beginPath();
+    ctx.moveTo(-dir*s*.055,-s*.17);
+    ctx.lineTo(dir*s*.075,-s*.19);
+    ctx.lineTo(dir*s*.155,-s*.075);
+    ctx.lineTo(dir*s*.13,s*.075);
+    ctx.lineTo(dir*s*.055,s*.16);
+    ctx.lineTo(-dir*s*.045,s*.145);
+    ctx.lineTo(-dir*s*.09,s*.035);
+    ctx.lineTo(-dir*s*.085,-s*.10);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if(view==='front'){
+    // Full terrifying face.
+    ctx.fillStyle="#000";
+    ctx.beginPath();
+    ctx.moveTo(-s*.115,-s*.07);ctx.lineTo(-s*.018,-s*.035);ctx.lineTo(-s*.095,s*.005);ctx.closePath();
+    ctx.moveTo( s*.115,-s*.07);ctx.lineTo( s*.018,-s*.035);ctx.lineTo( s*.095,s*.005);ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowBlur=chase?24:13;
+    ctx.shadowColor=chase?"#ff2525":"#e8fbff";
+    ctx.fillStyle=chase?"#ffdede":"#f5ffff";
+    ctx.beginPath();
+    ctx.arc(-s*.067,-s*.035,s*.0085,0,Math.PI*2);
+    ctx.arc( s*.067,-s*.035,s*.0085,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    const mouthTop=(u)=>{
+      const edge=Math.abs(u-.5)*2;
+      return(.030+(1-edge)*.070)*s;
+    };
+    const mouthBottom=(u)=>{
+      const edge=Math.abs(u-.5)*2;
+      return(.075+(1-edge)*.105)*s;
+    };
+
+    ctx.fillStyle="#010000";
+    ctx.beginPath();
+    ctx.moveTo(-s*.135,s*.030);
+    ctx.bezierCurveTo(-s*.085,s*.105,-s*.045,s*.125,0,s*.135);
+    ctx.bezierCurveTo(s*.045,s*.125,s*.085,s*.105,s*.135,s*.030);
+    ctx.bezierCurveTo(s*.095,s*.155,s*.055,s*.195,0,s*.205);
+    ctx.bezierCurveTo(-s*.055,s*.195,-s*.095,s*.155,-s*.135,s*.030);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle=chase?"rgba(205,38,45,.86)":"rgba(125,48,52,.72)";
+    ctx.lineWidth=Math.max(1.2,s*.008);
+    ctx.beginPath();
+    ctx.moveTo(-s*.137,s*.027);
+    ctx.bezierCurveTo(-s*.09,s*.095,-s*.045,s*.12,0,s*.13);
+    ctx.bezierCurveTo(s*.045,s*.12,s*.09,s*.095,s*.137,s*.027);
+    ctx.stroke();
+
+    ctx.fillStyle="#e8e2d3";
+    const teeth=15;
+    for(let i=0;i<teeth;i++){
+      const u=i/(teeth-1);
+      const tx=(-.118+u*.236)*s;
+      const top=mouthTop(u),bottom=mouthBottom(u);
+      const tw=s*(.012+.003*(1-Math.abs(u-.5)*2));
+      ctx.beginPath();
+      ctx.moveTo(tx-tw/2,top);ctx.lineTo(tx+tw/2,top);ctx.lineTo(tx,(top+bottom)*.54);ctx.closePath();ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(tx-tw/2,bottom);ctx.lineTo(tx+tw/2,bottom);ctx.lineTo(tx,(top+bottom)*.61);ctx.closePath();ctx.fill();
+    }
+  }else if(view==='back'){
+    // Back of head: absolutely no eyes or grin.
+    ctx.strokeStyle="rgba(74,82,83,.26)";
+    ctx.lineWidth=Math.max(1,s*.008);
+    ctx.beginPath();
+    ctx.moveTo(-s*.07,-s*.10);
+    ctx.quadraticCurveTo(0,-s*.14,s*.07,-s*.10);
+    ctx.moveTo(-s*.055,s*.015);
+    ctx.quadraticCurveTo(0,s*.055,s*.055,s*.015);
+    ctx.stroke();
+  }else{
+    // Side profile: one eye and a small edge of the grin.
+    const dir=view==='right'?1:-1;
+
+    ctx.fillStyle="#000";
+    ctx.beginPath();
+    ctx.moveTo(dir*s*.035,-s*.065);
+    ctx.lineTo(dir*s*.12,-s*.035);
+    ctx.lineTo(dir*s*.050,s*.002);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowBlur=chase?20:9;
+    ctx.shadowColor=chase?"#ff2525":"#dff9ff";
+    ctx.fillStyle=chase?"#ffdede":"#f5ffff";
+    ctx.beginPath();
+    ctx.arc(dir*s*.072,-s*.030,s*.008,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle=chase?"rgba(190,35,40,.76)":"rgba(110,48,50,.58)";
+    ctx.lineWidth=Math.max(1.1,s*.009);
+    ctx.beginPath();
+    ctx.moveTo(dir*s*.035,s*.060);
+    ctx.quadraticCurveTo(dir*s*.100,s*.100,dir*s*.135,s*.050);
+    ctx.stroke();
+
+    // Three visible side fangs.
+    ctx.fillStyle="#e8e2d3";
+    for(let i=0;i<3;i++){
+      const fx=dir*s*(.065+i*.022);
+      const fy=s*(.066+i*.010);
+      ctx.beginPath();
+      ctx.moveTo(fx-dir*s*.008,fy);
+      ctx.lineTo(fx+dir*s*.008,fy);
+      ctx.lineTo(fx,fy+s*.030);
+      ctx.closePath();ctx.fill();
+    }
+  }
+
+  // Facial/head cracks on visible surfaces.
+  ctx.strokeStyle="rgba(0,0,0,.88)";
+  ctx.lineWidth=Math.max(1,s*.007);
+  ctx.beginPath();
+  if(view==='front'){
+    ctx.moveTo(-s*.095,-s*.13);ctx.lineTo(-s*.065,-s*.09);ctx.lineTo(-s*.085,-s*.05);
+    ctx.moveTo( s*.098,-s*.13);ctx.lineTo( s*.068,-s*.09);ctx.lineTo( s*.088,-s*.05);
+  }else if(view==='back'){
+    ctx.moveTo(-s*.055,-s*.13);ctx.lineTo(-s*.020,-s*.08);ctx.lineTo(-s*.045,-s*.03);
+  }else{
+    const dir=view==='right'?1:-1;
+    ctx.moveTo(dir*s*.04,-s*.13);ctx.lineTo(dir*s*.075,-s*.09);ctx.lineTo(dir*s*.05,-s*.045);
+  }
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Chase aura only while actively pursuing.
+  if(chase){
+    ctx.save();
+    ctx.globalCompositeOperation="screen";
+    const aura=ctx.createRadialGradient(0,-s*.13,s*.06,0,-s*.10,s*.48);
+    aura.addColorStop(0,"rgba(135,0,0,.11)");
+    aura.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=aura;
+    ctx.beginPath();
+    ctx.ellipse(0,-s*.10,s*.48,s*.64,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+function render(){
+  let W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Keep Ver.9d sky/floor exactly as the stage base.
+  // Ver.10k: ceiling only.
+  // Match the completed floor's dark brown/black cave texture and palette.
+  let sky=ctx.createLinearGradient(0,0,0,H/2);
+  sky.addColorStop(0,'#090807');
+  sky.addColorStop(.28,'#17120e');
+  sky.addColorStop(.62,'#211912');
+  sky.addColorStop(1,'#17130f');
+  ctx.fillStyle=sky;
+  ctx.fillRect(0,0,W,H/2);
+
+  // Fixed ceiling details using the same visual language as the Ver.10d floor:
+  // dark patches, shallow cracks and embedded rock chips.
+  if(!render.ceilingFloorStyle){
+    let seed=864209753;
+    const rnd=()=>{
+      seed=(seed*1664525+1013904223)>>>0;
+      return seed/4294967296;
+    };
+    const details={cracks:[],stones:[],patches:[]};
+
+    for(let i=0;i<30;i++){
+      let x=rnd(), y=.04+rnd()*.40;
+      let pts=[[x,y]];
+      const seg=2+Math.floor(rnd()*4);
+      for(let j=0;j<seg;j++){
+        x+=(rnd()-.5)*.055;
+        y+=(rnd()-.5)*.030;
+        pts.push([x,y]);
+      }
+      details.cracks.push({pts,a:.07+rnd()*.10,w:.45+rnd()*.95});
+    }
+
+    for(let i=0;i<54;i++){
+      const y=.03+rnd()*.43;
+      details.stones.push({
+        x:.04+rnd()*.92, y,
+        rx:.002+rnd()*.008,
+        ry:.001+rnd()*.004,
+        rot:rnd()*Math.PI,
+        light:rnd()
+      });
+    }
+
+    for(let i=0;i<24;i++){
+      const y=.03+rnd()*.43;
+      details.patches.push({
+        x:.04+rnd()*.92, y,
+        rx:.018+rnd()*.050,
+        ry:.005+rnd()*.018,
+        a:.020+rnd()*.040
+      });
+    }
+
+    render.ceilingFloorStyle=details;
+  }
+
+  const cfd=render.ceilingFloorStyle;
+
+  // Broad uneven dark patches.
+  for(const p of cfd.patches){
+    ctx.save();
+    ctx.translate(p.x*W,p.y*H);
+    ctx.fillStyle=`rgba(0,0,0,${p.a})`;
+    ctx.beginPath();
+    ctx.ellipse(0,0,p.rx*W,p.ry*H,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Fine shallow cracks.
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  for(const c of cfd.cracks){
+    ctx.beginPath();
+    c.pts.forEach((p,i)=>{
+      const x=p[0]*W, y=p[1]*H;
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    });
+    ctx.strokeStyle=`rgba(31,20,13,${c.a})`;
+    ctx.lineWidth=c.w;
+    ctx.stroke();
+  }
+
+  // Small embedded ceiling rock chips, kept subtle like the floor.
+  for(const st of cfd.stones){
+    const x=st.x*W, y=st.y*H;
+    const rx=st.rx*W, ry=st.ry*H;
+
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(st.rot);
+
+    const r=42+Math.floor(st.light*22);
+    const g=31+Math.floor(st.light*17);
+    const b=22+Math.floor(st.light*12);
+    let sg=ctx.createLinearGradient(-rx,-ry,rx,ry);
+    sg.addColorStop(0,`rgba(${r+18},${g+13},${b+9},.25)`);
+    sg.addColorStop(1,`rgba(${r},${g},${b},.14)`);
+    ctx.fillStyle=sg;
+    ctx.beginPath();
+    ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Slightly darker toward the tunnel horizon for depth, matching the floor treatment.
+  let ceilingDepth=ctx.createLinearGradient(0,0,0,H/2);
+  ceilingDepth.addColorStop(0,'rgba(0,0,0,.20)');
+  ceilingDepth.addColorStop(.72,'rgba(0,0,0,.06)');
+  ceilingDepth.addColorStop(1,'rgba(0,0,0,.30)');
+  ctx.fillStyle=ceilingDepth;
+  ctx.fillRect(0,0,W,H/2);
+
+  // Ver.10d: floor drawing only. Game logic and all completed stage elements stay untouched.
+  let floor=ctx.createLinearGradient(0,H/2,0,H);
+  floor.addColorStop(0,'#17130f');
+  floor.addColorStop(.38,'#211912');
+  floor.addColorStop(.72,'#17120e');
+  floor.addColorStop(1,'#090807');
+  ctx.fillStyle=floor;
+  ctx.fillRect(0,H/2,W,H/2);
+
+  // Soft earthy illumination in the middle of the route.
+  let floorGlow=ctx.createRadialGradient(W*.5,H*.56,0,W*.5,H*.73,W*.62);
+  floorGlow.addColorStop(0,'rgba(103,72,43,.12)');
+  floorGlow.addColorStop(.45,'rgba(62,43,28,.07)');
+  floorGlow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=floorGlow;
+  ctx.fillRect(0,H/2,W,H/2);
+
+  // Stable cave-floor details: shallow cracks, embedded stones and uneven patches.
+  // They are screen-space decoration only and do not affect collision or movement.
+  if(!render.floorDetails){
+    let seed=246813579;
+    const rnd=()=>{
+      seed=(seed*1664525+1013904223)>>>0;
+      return seed/4294967296;
+    };
+    const details={cracks:[],stones:[],patches:[]};
+
+    for(let i=0;i<34;i++){
+      let x=rnd(), y=.56+rnd()*.40;
+      let pts=[[x,y]];
+      const seg=2+Math.floor(rnd()*4);
+      for(let j=0;j<seg;j++){
+        x+=(rnd()-.5)*(.025+.055*y);
+        y+=.012+rnd()*.035;
+        pts.push([x,y]);
+      }
+      details.cracks.push({pts, a:.07+rnd()*.10, w:.45+rnd()*1.0});
+    }
+
+    for(let i=0;i<62;i++){
+      const y=.55+rnd()*.43;
+      details.stones.push({
+        x:.04+rnd()*.92, y,
+        rx:.0018+rnd()*(.004+.010*y),
+        ry:.0010+rnd()*(.0025+.005*y),
+        rot:rnd()*Math.PI,
+        light:rnd()
+      });
+    }
+
+    for(let i=0;i<22;i++){
+      const y=.57+rnd()*.39;
+      details.patches.push({
+        x:.05+rnd()*.90, y,
+        rx:.012+rnd()*(.025+.035*y),
+        ry:.004+rnd()*(.010+.012*y),
+        a:.018+rnd()*.035
+      });
+    }
+    render.floorDetails=details;
+  }
+
+  const fd=render.floorDetails;
+
+  // Broad irregular dark patches break up the flat plane without obscuring the route.
+  for(const p of fd.patches){
+    ctx.save();
+    ctx.translate(p.x*W,p.y*H);
+    ctx.fillStyle=`rgba(0,0,0,${p.a})`;
+    ctx.beginPath();
+    ctx.ellipse(0,0,p.rx*W,p.ry*H,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Fine cracks become slightly more visible toward the foreground.
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  for(const c of fd.cracks){
+    ctx.beginPath();
+    c.pts.forEach((p,i)=>{
+      const x=p[0]*W, y=p[1]*H;
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    });
+    ctx.strokeStyle=`rgba(31,20,13,${c.a})`;
+    ctx.lineWidth=c.w;
+    ctx.stroke();
+  }
+
+  // Small embedded stones / rock chips.
+  for(const s of fd.stones){
+    const x=s.x*W, y=s.y*H;
+    const perspective=.35+Math.max(0,(s.y-.5))*1.45;
+    const rx=s.rx*W*perspective, ry=s.ry*H*perspective;
+
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(s.rot);
+
+    // tiny contact shadow
+    ctx.fillStyle='rgba(0,0,0,.16)';
+    ctx.beginPath();
+    ctx.ellipse(rx*.20,ry*.55,rx*1.10,ry*.72,0,0,Math.PI*2);
+    ctx.fill();
+
+    const r=42+Math.floor(s.light*22);
+    const g=31+Math.floor(s.light*17);
+    const b=22+Math.floor(s.light*12);
+    let sg=ctx.createLinearGradient(-rx,-ry,rx,ry);
+    sg.addColorStop(0,`rgba(${r+18},${g+13},${b+9},.34)`);
+    sg.addColorStop(1,`rgba(${r},${g},${b},.20)`);
+    ctx.fillStyle=sg;
+    ctx.beginPath();
+    ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Darken the far floor and both wall/floor seams for a natural cave transition.
+  let farFloor=ctx.createLinearGradient(0,H*.50,0,H*.72);
+  farFloor.addColorStop(0,'rgba(0,0,0,.34)');
+  farFloor.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=farFloor;
+  ctx.fillRect(0,H/2,W,H*.25);
+
+  let edgeShade=ctx.createLinearGradient(0,0,W,0);
+  edgeShade.addColorStop(0,'rgba(0,0,0,.22)');
+  edgeShade.addColorStop(.16,'rgba(0,0,0,0)');
+  edgeShade.addColorStop(.84,'rgba(0,0,0,0)');
+  edgeShade.addColorStop(1,'rgba(0,0,0,.22)');
+  ctx.fillStyle=edgeShade;
+  ctx.fillRect(0,H/2,W,H/2);
+
+  // Ver.10c: create one reusable procedural cave-rock texture.
+  // This lives entirely inside render(), so no game logic or other function is touched.
+  if(!render.rockTexture){
+    const tex=document.createElement('canvas');
+    tex.width=512; tex.height=512;
+    const t=tex.getContext('2d');
+
+    // Deterministic pseudo-random generator for stable rock texture.
+    let seed=987654321;
+    const rnd=()=>{
+      seed=(seed*1664525+1013904223)>>>0;
+      return seed/4294967296;
+    };
+
+    // Warm dark-brown stone base.
+    let bg=t.createLinearGradient(0,0,512,512);
+    bg.addColorStop(0,'#24180f');
+    bg.addColorStop(.35,'#3a291b');
+    bg.addColorStop(.70,'#21170f');
+    bg.addColorStop(1,'#4b3523');
+    t.fillStyle=bg;
+    t.fillRect(0,0,512,512);
+
+    // Large irregular rock slabs.
+    const rocks=[];
+    for(let gy=-1;gy<8;gy++){
+      for(let gx=-1;gx<8;gx++){
+        const cx=gx*78+38+(rnd()-.5)*40;
+        const cy=gy*76+38+(rnd()-.5)*36;
+        const rx=42+rnd()*35;
+        const ry=34+rnd()*34;
+        const points=[];
+        const n=7+Math.floor(rnd()*4);
+        for(let k=0;k<n;k++){
+          const a=(Math.PI*2*k/n)+(rnd()-.5)*.22;
+          const rr=.70+rnd()*.38;
+          points.push([
+            cx+Math.cos(a)*rx*rr,
+            cy+Math.sin(a)*ry*rr
+          ]);
+        }
+        rocks.push({cx,cy,points,tone:rnd()});
+      }
+    }
+
+    // Deep crevices first, creating separation between individual boulders.
+    t.lineJoin='round';
+    t.lineCap='round';
+    for(const rock of rocks){
+      t.beginPath();
+      rock.points.forEach((p,i)=>i?t.lineTo(p[0],p[1]):t.moveTo(p[0],p[1]));
+      t.closePath();
+      t.strokeStyle='rgba(4,2,1,.88)';
+      t.lineWidth=10+rnd()*9;
+      t.stroke();
+    }
+
+    // Paint each rock face with individual directional shading.
+    for(const rock of rocks){
+      const light=rock.tone;
+      const r0=42+light*36, g0=29+light*25, b0=18+light*17;
+      let rg=t.createRadialGradient(
+        rock.cx-22,rock.cy-25,4,
+        rock.cx,rock.cy,72
+      );
+      rg.addColorStop(0,`rgb(${Math.min(105,r0+30)|0},${Math.min(78,g0+22)|0},${Math.min(55,b0+17)|0})`);
+      rg.addColorStop(.48,`rgb(${r0|0},${g0|0},${b0|0})`);
+      rg.addColorStop(1,`rgb(${Math.max(18,r0-22)|0},${Math.max(13,g0-16)|0},${Math.max(9,b0-12)|0})`);
+
+      t.beginPath();
+      rock.points.forEach((p,i)=>i?t.lineTo(p[0],p[1]):t.moveTo(p[0],p[1]));
+      t.closePath();
+      t.fillStyle=rg;
+      t.fill();
+
+      // Highlight one upper-left ridge.
+      t.beginPath();
+      const pts=rock.points;
+      for(let i=0;i<Math.min(4,pts.length);i++){
+        const p=pts[i];
+        i?t.lineTo(p[0],p[1]):t.moveTo(p[0],p[1]);
+      }
+      t.strokeStyle='rgba(190,145,94,.17)';
+      t.lineWidth=2.2+rnd()*2.5;
+      t.stroke();
+
+      // Shadow opposite ridge.
+      t.beginPath();
+      for(let i=Math.floor(pts.length/2);i<pts.length;i++){
+        const p=pts[i];
+        i===Math.floor(pts.length/2)?t.moveTo(p[0],p[1]):t.lineTo(p[0],p[1]);
+      }
+      t.strokeStyle='rgba(0,0,0,.30)';
+      t.lineWidth=4+rnd()*5;
+      t.stroke();
+    }
+
+    // Secondary fractures running across some rocks.
+    for(let i=0;i<48;i++){
+      let x=rnd()*512,y=rnd()*512;
+      t.beginPath();
+      t.moveTo(x,y);
+      const seg=2+Math.floor(rnd()*4);
+      for(let j=0;j<seg;j++){
+        x+=(rnd()-.5)*55;
+        y+=16+rnd()*40;
+        t.lineTo(x,y);
+      }
+      t.strokeStyle=`rgba(5,2,1,${.28+rnd()*.42})`;
+      t.lineWidth=.8+rnd()*2.4;
+      t.stroke();
+
+      // Tiny warm lip beside some cracks to fake relief.
+      if(i%3===0){
+        t.translate(1.5,-1);
+        t.strokeStyle='rgba(177,126,76,.11)';
+        t.lineWidth=.7;
+        t.stroke();
+        t.setTransform(1,0,0,1,0,0);
+      }
+    }
+
+    // Small mineral speckles and surface grit.
+    for(let i=0;i<950;i++){
+      const x=rnd()*512,y=rnd()*512;
+      const sz=.4+rnd()*2.0;
+      const bright=rnd()>.72;
+      t.fillStyle=bright
+        ?`rgba(175,137,92,${.04+rnd()*.10})`
+        :`rgba(0,0,0,${.04+rnd()*.13})`;
+      t.fillRect(x,y,sz,sz);
+    }
+
+    // Mild dark vignette inside texture tile avoids a tiled-wallpaper feel.
+    let vg=t.createRadialGradient(256,240,70,256,256,380);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,'rgba(0,0,0,.22)');
+    t.fillStyle=vg;
+    t.fillRect(0,0,512,512);
+
+    render.rockTexture=tex;
+  }
+
+  const rockTex=render.rockTexture;
+  const FOV=Math.PI/2.20,rays=Math.floor(W/2);
+
+  for(let i=0;i<rays;i++){
+    let ang=player.dir-FOV/2+(i/rays)*FOV,
+        hit=castRay(ang),
+        corrected=hit.d*Math.cos(ang-player.dir),
+        wallH=Math.min(H*1.7,H/(corrected+.0001)*.92);
+
+    // Determine which wall face was hit, then map world position to texture X.
+    const fx=hit.x-Math.floor(hit.x);
+    const fy=hit.y-Math.floor(hit.y);
+    const edgeX=Math.min(fx,1-fx);
+    const edgeY=Math.min(fy,1-fy);
+    const u=(edgeX<edgeY?hit.y:hit.x);
+
+    // Slightly jagged wall silhouette to remove the perfect rectangular tunnel feel.
+    const silhouette=
+      Math.sin(u*5.1)*.015 +
+      Math.sin(u*11.7+1.4)*.009 +
+      Math.cos(u*19.3-.6)*.005;
+
+    const jag=wallH*silhouette;
+    const y=H/2-wallH/2-jag*.55;
+    const drawH=wallH+jag;
+
+    // Sample a narrow vertical strip from the procedural rock texture.
+    const tx=((u*91)%512+512)%512;
+    ctx.drawImage(
+      rockTex,
+      tx,0,2,512,
+      i*2,y,2.35,drawH
+    );
+
+    // Distance darkening keeps depth and horror atmosphere.
+    const fog=Math.max(0,Math.min(.78,(corrected-1.2)/16));
+    if(fog>0){
+      ctx.fillStyle=`rgba(2,4,5,${fog})`;
+      ctx.fillRect(i*2,y,2.4,drawH);
+    }
+
+    // Directional shading adds stronger apparent relief to rock faces.
+    const relief=.08+.10*Math.abs(Math.sin(u*3.2));
+    if(((Math.floor(u*7)+Math.floor(hit.x+hit.y))&1)===0){
+      ctx.fillStyle=`rgba(208,154,98,${relief*.22})`;
+      ctx.fillRect(i*2,y,1,drawH);
+    }else{
+      ctx.fillStyle=`rgba(0,0,0,${relief*.45})`;
+      ctx.fillRect(i*2+1,y,1.2,drawH);
+    }
+  }
+
+  // Everything below is Ver.9d stage content unchanged.
+  crystals.forEach(o=>drawCrystal(o,FOV));
+  torches.forEach(o=>drawTorch(o,FOV));
+  tablets.forEach(t=>{if(!t.found)drawTablet(t,FOV)});
+  drawAltar(FOV);
+  drawMonster(FOV);
+
+  ctx.save();
+  ctx.globalAlpha=.03;
+  ctx.fillStyle='#fff';
+  for(let i=0;i<80;i++)ctx.fillRect(Math.random()*W,Math.random()*H,1,1);
+  ctx.restore();
+}
+function loop(now){let dt=Math.min(.035,(now-lastTime)/1000);lastTime=now;update(dt);render();requestAnimationFrame(loop)}
+const controlCodes=new Set(['KeyW','KeyA','KeyS','KeyD','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','KeyE']);
+document.addEventListener('keydown',e=>{
+  if(controlCodes.has(e.code))e.preventDefault();
+  pressed.add(e.code);
+  if(e.code==='KeyE' && !e.repeat)interact();
+});
+document.addEventListener('keyup',e=>{
+  pressed.delete(e.code);
+});
+function clearPressed(){pressed.clear();}
+window.addEventListener('blur',clearPressed);
+window.addEventListener('focus',clearPressed);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)clearPressed()});
+
+// FPS mouse look: Pointer Lock is the primary and only non-drag look mode.
+// This avoids the screen-edge problem that made one direction stop rotating.
+document.addEventListener('mousemove',e=>{
+  if(!running||gameState!=='playing')return;
+  if(document.pointerLockElement===canvas){
+    const dx=Number.isFinite(e.movementX)?e.movementX:0;
+    player.dir += dx * .00135;
+  }else if(draggingView){
+    const dx=Number.isFinite(e.movementX)?e.movementX:0;
+    player.dir += dx * .00155;
+  }
+});
+
+canvas.addEventListener('mousedown',e=>{
+  if(!running||gameState!=='playing')return;
+  if(document.pointerLockElement!==canvas){
+    draggingView=true;
+    try{canvas.requestPointerLock()}catch(_){}
+  }
+});
+document.addEventListener('mouseup',()=>draggingView=false);
+
+canvas.addEventListener('click',()=>{
+  if(!running||gameState!=='playing')return;
+  canvas.focus();
+  if(document.pointerLockElement!==canvas){
+    try{canvas.requestPointerLock()}catch(_){
+      showMessage('マウス固定に失敗しました。画面を押しながら左右へドラッグできます。',2200);
+    }
+  }
+});
+
+document.addEventListener('pointerlockchange',()=>{
+  draggingView=false;
+  if(document.pointerLockElement===canvas){
+    canvas.style.cursor='none';
+    canvas.focus();
+    showMessage('視点操作 ON　マウス左右 / Escで解除',1200);
+  }else{
+    canvas.style.cursor='crosshair';
+    if(running&&gameState==='playing')showMessage('視点固定が解除されました。画面をクリックすると再開します。',1800);
+  }
+});
+document.addEventListener('pointerlockerror',()=>{
+  showMessage('マウス固定に失敗。画面を押したまま左右へドラッグしてください。',2400);
+});
+
+startBtn.addEventListener('click',()=>{
+  ensureAudio();
+  start.style.display='none';
+  running=true;
+  reset();
+  canvas.focus();
+  canvas.style.cursor='crosshair';
+  try{
+    canvas.requestPointerLock();
+  }catch(_){
+    showMessage('画面をクリックするとマウス視点が始まります。',2200);
+  }
+});
+restartBtn.addEventListener('click',()=>{
+  ensureAudio();
+  reset();
+  running=true;
+  canvas.focus();
+  canvas.style.cursor='crosshair';
+  try{canvas.requestPointerLock()}catch(_){}
+});
+
+// --- Stage layout self-check (developer safety) ---
+(function validateStageLayout(){
+  const points=[...tablets.map((t,i)=>({name:'tablet'+(i+1),x:t.x,y:t.y})),{name:'altar',x:altar.x,y:altar.y}];
+  const sx=Math.floor(playerStart.x),sy=Math.floor(playerStart.y),seen=new Set([sx+','+sy]),q=[[sx,sy]];
+  while(q.length){
+    const [x,y]=q.shift();
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+      const nx=x+dx,ny=y+dy,k=nx+','+ny;
+      if(nx>=0&&ny>=0&&nx<MAP_W&&ny<MAP_H&&map[ny][nx]==='0'&&!seen.has(k)){seen.add(k);q.push([nx,ny]);}
+    });
+  }
+  points.forEach(p=>{
+    const k=Math.floor(p.x)+','+Math.floor(p.y);
+    if(!seen.has(k)) console.error('UNREACHABLE:',p.name,p.x,p.y);
+  });
+})();
+
+reset();requestAnimationFrame(loop);
+})();
+</script>
+<div id="mobileControls" aria-hidden="true"><div id="mcLook" class="mc-look"></div><div id="mcStick" class="mc-stick"><div id="mcKnob" class="mc-knob"></div></div><button id="mcRun" class="mc-run" type="button">RUN</button><button id="mcE" class="mc-e" type="button">E<span>調べる</span></button></div><script>
+(()=>{
+ const mobile=matchMedia("(hover:none) and (pointer:coarse)").matches||navigator.maxTouchPoints>0;if(!mobile)return;
+ const stick=document.getElementById("mcStick"),knob=document.getElementById("mcKnob"),look=document.getElementById("mcLook"),eb=document.getElementById("mcE"),run=document.getElementById("mcRun");
+ const held=new Set();
+ function fire(type,code,key){window.dispatchEvent(new KeyboardEvent(type,{key,code,bubbles:true,cancelable:true}))}
+ function set(code,on,key){if(on&&!held.has(code)){held.add(code);fire("keydown",code,key)}else if(!on&&held.has(code)){held.delete(code);fire("keyup",code,key)}}
+ function clear(){set("KeyW",0,"w");set("KeyA",0,"a");set("KeyS",0,"s");set("KeyD",0,"d");knob.style.transform="translate(0,0)"}
+ let sid=null,cx=0,cy=0;
+ function sm(x,y){let dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)||1,m=47;if(d>m){dx*=m/d;dy*=m/d}knob.style.transform=`translate(${dx}px,${dy}px)`;let q=12;set("KeyW",dy<-q,"w");set("KeyS",dy>q,"s");set("KeyA",dx<-q,"a");set("KeyD",dx>q,"d")}
+ stick.onpointerdown=e=>{sid=e.pointerId;stick.setPointerCapture(sid);let r=stick.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;sm(e.clientX,e.clientY);e.preventDefault()};
+ stick.onpointermove=e=>{if(e.pointerId===sid){sm(e.clientX,e.clientY);e.preventDefault()}};
+ stick.onpointerup=stick.onpointercancel=e=>{if(sid===null||e.pointerId===sid){sid=null;clear();e.preventDefault()}};
+ let lid=null,lx=0;
+ look.onpointerdown=e=>{lid=e.pointerId;lx=e.clientX;look.setPointerCapture(lid);e.preventDefault()};
+ look.onpointermove=e=>{if(e.pointerId!==lid)return;let dx=e.clientX-lx;lx=e.clientX;try{
+   if(typeof inRoom201!=="undefined"&&inRoom201)roomPlayer201.dir+=dx*.003;
+   else if(typeof inRoom218!=="undefined"&&inRoom218)roomPlayer218.dir+=dx*.003;
+   else if(typeof inRoom209!=="undefined"&&inRoom209)roomPlayer209.dir+=dx*.003;
+   else if(typeof inRoom203!=="undefined"&&inRoom203)roomPlayer203.dir+=dx*.003;
+   else if(typeof inRoom214!=="undefined"&&inRoom214)roomPlayer.dir+=dx*.003;
+   else if(typeof player!=="undefined")player.dir+=dx*.003;
+ }catch(_){}e.preventDefault()};
+ look.onpointerup=look.onpointercancel=e=>{if(lid===null||e.pointerId===lid){lid=null;e.preventDefault()}};
+ eb.onpointerdown=e=>{e.preventDefault();fire("keydown","KeyE","e");setTimeout(()=>fire("keyup","KeyE","e"),70)};
+ let fast=false;run.onpointerdown=e=>{e.preventDefault();fast=!fast;set("ShiftLeft",fast,"Shift");run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
+ window.addEventListener("blur",()=>{clear();if(fast){fast=false;set("ShiftLeft",0,"Shift")}});
+})();
+</script></body></html>

@@ -1,0 +1,1712 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STAGE 2 Ver.10 - 無人オフィス完成構造版</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#05080b;color:#eef6ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#game{position:relative;width:100%;height:100%;background:#000}
+canvas{display:block;width:100%;height:100%;image-rendering:auto}
+#hud{position:absolute;left:16px;top:14px;z-index:3;background:rgba(4,10,15,.70);border:1px solid rgba(150,190,215,.25);border-radius:12px;padding:10px 13px;backdrop-filter:blur(4px);font-size:14px;line-height:1.5}
+#floorBadge{font-weight:800;font-size:18px;letter-spacing:.08em}
+#roomName{color:#bcd5e4}
+#cross{position:absolute;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);z-index:2;opacity:.72}
+#cross:before,#cross:after{content:"";position:absolute;background:#dcecff;border-radius:2px}
+#cross:before{left:7px;top:1px;width:2px;height:14px}
+#cross:after{left:1px;top:7px;width:14px;height:2px}
+#message{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);z-index:4;background:rgba(0,0,0,.74);padding:9px 14px;border-radius:9px;font-weight:700;opacity:0;transition:opacity .15s}
+#message.on{opacity:1}
+#start{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at center,#16212b 0,#070b10 58%,#020304 100%)}
+.panel{width:min(720px,88vw);padding:30px;border:1px solid rgba(180,215,235,.28);border-radius:18px;background:rgba(7,13,19,.90);box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.panel h1{margin:0 0 8px;font-size:30px}.panel h2{margin:0 0 20px;font-size:16px;color:#9db5c6;font-weight:600}
+.panel p{line-height:1.75;color:#d6e3eb}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0;color:#c8d7df}
+button{border:0;border-radius:10px;padding:12px 20px;font-size:16px;font-weight:800;cursor:pointer;background:#dcecff;color:#0b1720}
+#hint{position:absolute;right:16px;top:14px;z-index:3;background:rgba(4,10,15,.62);border-radius:10px;padding:9px 12px;font-size:13px;color:#bcd0dc}
+#fade{position:absolute;inset:0;z-index:7;pointer-events:none;background:#06101a;opacity:0;transition:opacity .22s}
+#allCardsBanner{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:30;padding:18px 30px;border:1px solid rgba(180,235,255,.9);border-radius:8px;background:rgba(8,18,25,.90);color:#e9fbff;font:800 22px system-ui;letter-spacing:1.2px;text-align:center;box-shadow:0 0 28px rgba(90,210,255,.35);opacity:0;pointer-events:none;transition:opacity .18s}#allCardsBanner.show{opacity:1}
+/* Shared protagonist hands — exact STAGE 1 Ver.13e design */
+#playerView{
+  position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,.55));
+}
+.gloveRig{
+  position:absolute;bottom:-3%;width:20%;height:35%;
+  transform-origin:50% 100%;
+}
+.leftRig{left:5%;transform:rotate(3deg)}
+.rightRig{right:5%;transform:rotate(-3deg)}
+
+.cable{
+  position:absolute;width:12%;height:90%;bottom:-34%;left:44%;
+  border-radius:7px;opacity:.95;
+  box-shadow:inset 0 0 5px rgba(255,255,255,.12),0 6px 15px rgba(0,0,0,.5);
+}
+.cableBlue{background:repeating-linear-gradient(90deg,#10233a 0 5px,#286ba5 5px 9px,#0b1726 9px 14px)}
+.cableRed{background:repeating-linear-gradient(90deg,#3b1115 0 5px,#a52c35 5px 9px,#250b0e 9px 14px)}
+
+.wristUnit{
+  position:absolute;left:30%;bottom:7%;width:42%;height:25%;
+  background:linear-gradient(180deg,#41494b,#181d1e 58%,#0b0e0f);
+  border:2px solid rgba(255,255,255,.1);border-radius:9px;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,.08),0 10px 18px rgba(0,0,0,.48);
+}
+.wristBand{position:absolute;left:9%;right:9%;bottom:12%;height:18%;background:#090b0c;border-radius:4px}
+.wristLight{
+  position:absolute;left:50%;top:15%;width:13%;aspect-ratio:1;transform:translateX(-50%);
+  border-radius:50%;background:#c9fff3;box-shadow:0 0 9px rgba(163,255,236,.8);
+}
+
+.glove{position:absolute;left:7%;top:-1%;width:86%;height:74%}
+
+/* Palm starts BELOW the finger bases so the four fingers visibly grow from its top edge. */
+.palm{
+  position:absolute;left:20%;top:39%;width:61%;height:42%;
+  border-radius:9px 9px 15px 15px;
+  clip-path:polygon(4% 0,96% 0,100% 15%,95% 100%,7% 100%,0 15%);
+  box-shadow:inset 5px 6px 8px rgba(255,255,255,.13),
+             inset -7px -8px 10px rgba(0,0,0,.24),
+             0 8px 15px rgba(0,0,0,.3);
+}
+.palmPad{
+  position:absolute;left:30%;top:35%;width:40%;height:31%;
+  border-radius:6px;box-shadow:inset 0 0 7px rgba(0,0,0,.18);
+}
+
+/* Straight fingers. Their bottoms meet the top of the palm instead of overlapping its face. */
+.finger{
+  position:absolute;display:block;border-radius:8px 8px 4px 4px;
+  box-shadow:inset 3px 3px 5px rgba(255,255,255,.14),
+             inset -3px -5px 6px rgba(0,0,0,.18),
+             0 3px 6px rgba(0,0,0,.25);
+  transform-origin:50% 100%;
+}
+.index{width:14%;height:41%;left:25%;top:1%;transform:rotate(-2deg)}
+.middle{width:15%;height:46%;left:40%;top:-4%;transform:none}
+.ring{width:14%;height:42%;left:56%;top:0;transform:rotate(2deg)}
+.pinky{width:13%;height:35%;left:71%;top:7%;transform:rotate(4deg)}
+
+/* Thumb defaults for the RIGHT hand: thumb on the inner/left side. */
+.thumb{
+  width:15%;height:31%;left:8%;top:45%;
+  border-radius:7px 7px 5px 5px;
+  transform:rotate(-30deg);
+}
+
+/* LEFT hand is anatomically mirrored: thumb on the inner/right side. */
+.leftRig .thumb{
+  left:auto;right:7%;top:45%;
+  transform:rotate(30deg);
+}
+
+/* Small knuckle bridge visually connects fingers and palm. */
+.palm::before{
+  content:"";position:absolute;left:8%;right:8%;top:-7%;height:13%;
+  border-radius:6px 6px 2px 2px;background:inherit;
+  box-shadow:inset 0 3px 4px rgba(255,255,255,.08);
+}
+
+.blueGlove .palm,.blueGlove .finger{
+  background:linear-gradient(145deg,#9b6cff 0%,#7c3aed 52%,#4c1d95 100%);
+}
+.redGlove .palm,.redGlove .finger{
+  background:linear-gradient(145deg,#c7f36a 0%,#84cc16 52%,#4d7c0f 100%);
+}
+.blueGlove .palmPad{background:linear-gradient(145deg,#efe7ff,#bda6ff)}
+.redGlove .palmPad{background:linear-gradient(145deg,#efffc8,#b8e86d)}
+
+.leftRig .glove{transform:rotate(-2deg)}
+.rightRig .glove{transform:rotate(2deg)}
+
+@media (max-width:1000px){.gloveRig{width:23%;height:33%}}
+
+/* STAGE 2 ending: 3-second white light expanding from the emergency exit */
+#stage2ClearSequence{
+  position:absolute;inset:0;z-index:1000;overflow:hidden;
+  pointer-events:auto;
+}
+#stage2ClearSequence .clearLight{
+  position:absolute;
+  left:25%; top:50%;
+  width:18px; height:18px;
+  border-radius:50%;
+  transform:translate(-50%,-50%) scale(.02);
+  background:#fff;
+  opacity:0;
+  box-shadow:
+    0 0 35px 18px rgba(255,255,255,.98),
+    0 0 110px 55px rgba(255,255,255,.82),
+    0 0 240px 120px rgba(255,255,255,.48);
+}
+#stage2ClearSequence.play .clearLight{
+  animation:stage2ExitWhiteout 3s cubic-bezier(.18,.62,.20,1) forwards;
+}
+@keyframes stage2ExitWhiteout{
+  0%{
+    opacity:.15;
+    transform:translate(-50%,-50%) scale(.02);
+  }
+  18%{
+    opacity:.78;
+    transform:translate(-50%,-50%) scale(3);
+  }
+  48%{
+    opacity:.96;
+    transform:translate(-50%,-50%) scale(20);
+  }
+  78%{
+    opacity:1;
+    transform:translate(-50%,-50%) scale(75);
+  }
+  100%{
+    opacity:1;
+    transform:translate(-50%,-50%) scale(180);
+  }
+}
+#stage2ClearSequence .clearTitle{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:#fff;color:#111;
+  font:900 clamp(34px,6vw,78px)/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  letter-spacing:.14em;
+  opacity:0;
+}
+#stage2ClearSequence.complete .clearTitle{
+  opacity:1;
+  transition:opacity 1.1s ease;
+}
+
+
+/* Shared monster danger/capture effects — based on STAGE 1 Ver.13e */
+#monsterDanger{
+ position:absolute;inset:0;z-index:6;pointer-events:none;
+ box-shadow:inset 0 0 180px rgba(170,0,0,0);
+ background:transparent;
+ transition:box-shadow .16s linear,background .16s linear;
+}
+#monsterCaptureFlash{
+ position:absolute;inset:0;z-index:900;pointer-events:none;opacity:0;
+ background:radial-gradient(circle at center,
+   rgba(255,235,225,.72) 0%,
+   rgba(185,0,0,.78) 28%,
+   rgba(65,0,0,.95) 72%,
+   rgba(0,0,0,.98) 100%);
+}
+#monsterCaptureFlash.hit{animation:stage2MonsterCapture .72s ease-out}
+@keyframes stage2MonsterCapture{
+ 0%{opacity:0;transform:scale(1)}
+ 10%{opacity:1;transform:scale(1.025)}
+ 24%{opacity:.55;transform:scale(.99)}
+ 42%{opacity:.95;transform:scale(1.018)}
+ 100%{opacity:0;transform:scale(1)}
+}
+#monsterGameOver{
+ position:absolute;inset:0;z-index:950;display:none;
+ place-items:center;background:rgba(0,0,0,.93);color:#fff;
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+#monsterGameOver.show{display:grid}
+#monsterGameOver .monsterOverCard{text-align:center}
+#monsterGameOver h2{font-size:clamp(38px,7vw,86px);letter-spacing:.12em;margin:0 0 18px}
+#monsterGameOver button{
+ border:0;border-radius:10px;padding:12px 22px;font-weight:800;font-size:16px;cursor:pointer;
+}
+
+</style>
+<style>/* V1.5 MOBILE ONLY */
+#mobileControls{display:none;position:fixed;inset:0;z-index:2147483000;pointer-events:none;touch-action:none;user-select:none}
+.mc-stick{position:absolute;left:18px;bottom:20px;width:148px;height:148px;border-radius:50%;background:rgba(8,10,14,.32);border:2px solid rgba(255,255,255,.30);pointer-events:auto;touch-action:none}
+.mc-knob{position:absolute;left:47px;top:47px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.44);border:2px solid rgba(255,255,255,.68);box-sizing:border-box}
+.mc-look{position:absolute;left:42%;right:0;top:0;bottom:0;pointer-events:auto;touch-action:none}
+.mc-e{position:absolute;right:22px;bottom:28px;width:84px;height:84px;border-radius:50%;border:2px solid rgba(255,255,255,.74);background:rgba(18,22,28,.58);color:#fff;font:900 30px system-ui;pointer-events:auto}
+.mc-e span{display:block;font-size:10px}.mc-run{position:absolute;right:120px;bottom:42px;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.52);background:rgba(18,22,28,.48);color:#fff;font:800 11px system-ui;pointer-events:auto}
+@media (hover:none) and (pointer:coarse){#mobileControls{display:block}html,body{overscroll-behavior:none}}
+</style></head>
+<body>
+<div id="game">
+<div id="allCardsBanner">ALL SECURITY CARDS ACQUIRED</div><canvas id="c"></canvas>
+<div id="playerView" aria-hidden="true">
+  <div class="gloveRig leftRig">
+    <div class="cable cableBlue"></div>
+    <div class="wristUnit">
+      <div class="wristBand"></div>
+      <div class="wristLight"></div>
+    </div>
+    <div class="glove blueGlove">
+      <div class="palm">
+        <div class="palmPad"></div>
+      </div>
+      <span class="finger thumb"></span>
+      <span class="finger index"></span>
+      <span class="finger middle"></span>
+      <span class="finger ring"></span>
+      <span class="finger pinky"></span>
+    </div>
+  </div>
+
+  <div class="gloveRig rightRig">
+    <div class="cable cableRed"></div>
+    <div class="wristUnit">
+      <div class="wristBand"></div>
+      <div class="wristLight"></div>
+    </div>
+    <div class="glove redGlove">
+      <div class="palm">
+        <div class="palmPad"></div>
+      </div>
+      <span class="finger thumb"></span>
+      <span class="finger index"></span>
+      <span class="finger middle"></span>
+      <span class="finger ring"></span>
+      <span class="finger pinky"></span>
+    </div>
+  </div>
+</div>
+
+<div id="monsterDanger"></div>
+<div id="monsterCaptureFlash"></div>
+<div id="monsterGameOver"><div class="monsterOverCard"><h2>GAME OVER</h2><p>異形に捕まった。</p><button onclick="location.reload()">もう一度プレイ</button></div></div>
+<div id="hud"><div id="floorBadge">1F</div><div id="roomName">エントランス</div><div id="cardCount" style="margin-top:5px;color:#dbe8ef;font-weight:700">SECURITY CARDS 0 / 5</div></div>
+<div id="hint">WASD 移動 / マウス 視点 / Shift ダッシュ / E 調べる</div>
+<div id="cross"></div><div id="message"></div><div id="fade"></div>
+<div id="start"><div class="panel">
+<h1>STAGE 2</h1><h2>Ver.1a「3階建て無人オフィス・フロア転送装置版基本構造版」</h2>
+<p>青い光が消えると、あなたは深夜の無人オフィスに立っていた。蛍光灯の音だけが、誰もいないフロアに響いている。</p>
+<p>今回は<strong>建物の基本構造テスト</strong>。敵・カード・謎解き・ゴール処理はまだありません。1F～3Fを歩き、転送装置で全フロアを移動できるか確認してください。</p>
+<div class="controls"><div>W / S：前進・後退</div><div>A / D：左右移動</div><div>マウス：視点変更</div><div>Shift：ダッシュ</div><div>E：転送装置・ドアを使う</div><div>Esc：マウス解除</div></div>
+<button id="startBtn">オフィスに入る</button>
+</div></div>
+</div>
+<script>
+const allCardsBanner=document.getElementById('allCardsBanner');
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+const floorBadge=document.getElementById('floorBadge'),roomName=document.getElementById('roomName'),cardCount=document.getElementById('cardCount');
+const msg=document.getElementById('message'),fade=document.getElementById('fade'),start=document.getElementById('start');
+const startBtn=document.getElementById('startBtn');
+let W=innerWidth,H=innerHeight;
+function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight} addEventListener('resize',resize);resize();
+
+const MAPS=[
+[
+"1111111111111111111111111111",
+"1000000000001110000000000001",
+"1000000000001110000000000001",
+"1000000000001110000000000001",
+"1000000000001110000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1111110011111111111000111111",
+"1000000010000000000000100001",
+"1000000010000000000000100001",
+"1000000010000000000000100001",
+"1000000000000000000000000001",
+"1000000010000000000000100001",
+"1000000010000000000000100001",
+"1111000011110000111111100001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1111111111111111111111111111"
+],
+[
+"1111111111111111111111111111",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1111000011110000111100001111",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1111110000111111000011110001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000001111000011110000000001",
+"1000001000000000010000000001",
+"1000001000000000010000000001",
+"1000000000000000000000000001",
+"1000001000000000010000000001",
+"1000001000000000010000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1111111111111111111111111111"
+],
+[
+"1111111111111111111111111111",
+"1000000000001111000000000001",
+"1000000000001111000000000001",
+"1000000000001111000000000001",
+"1000000000000000000000000001",
+"1111110000111111110000111111",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000001111000011110000000001",
+"1000001000000000010000000001",
+"1000001000000000010000000001",
+"1000000000000000000000000001",
+"1111001000011110010000111111",
+"1000001000000000010000000001",
+"1000001000000000010000000001",
+"1000000000000000000000000001",
+"1000001111110001111110000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1000000000000000000000000001",
+"1111111111111111111111111111"
+]
+];
+const starts=[{x:3.2,y:18.0,dir:-Math.PI/2},{x:3.2,y:18.0,dir:-Math.PI/2},{x:3.2,y:18.0,dir:-Math.PI/2}];
+const floorTransfers=[
+ [{x:24.5,y:2.5,to:1,tx:24.5,ty:18.0,label:"2Fへ移動"}],
+ [{x:24.5,y:18.0,to:0,tx:24.5,ty:2.8,label:"1Fへ移動"},{x:24.5,y:2.5,to:2,tx:24.5,ty:18.0,label:"3Fへ移動"}],
+ [{x:24.5,y:18.0,to:1,tx:24.5,ty:2.8,label:"2Fへ移動"}]
+];
+const roomZones=[
+ [
+  {x1:1,y1:15,x2:8,y2:20,n:"エントランス・受付"},
+  {x1:1,y1:1,x2:11,y2:7,n:"大会議室"},
+  {x1:15,y1:1,x2:26,y2:7,n:"ラウンジ"},
+  {x1:1,y1:8,x2:8,y2:14,n:"警備室"},
+  {x1:9,y1:8,x2:22,y2:14,n:"中央ホール"},
+  {x1:23,y1:8,x2:26,y2:20,n:"階段ホール"}
+ ],
+ [
+  {x1:1,y1:1,x2:26,y2:8,n:"オープンオフィス"},
+  {x1:1,y1:9,x2:10,y2:19,n:"デスクエリア A"},
+  {x1:11,y1:9,x2:18,y2:19,n:"コピー・給湯エリア"},
+  {x1:19,y1:9,x2:26,y2:19,n:"デスクエリア B"}
+ ],
+ [
+  {x1:1,y1:1,x2:11,y2:7,n:"役員応接室"},
+  {x1:16,y1:1,x2:26,y2:7,n:"社長室"},
+  {x1:1,y1:8,x2:10,y2:16,n:"資料室"},
+  {x1:11,y1:6,x2:18,y2:16,n:"役員ホール"},
+  {x1:19,y1:8,x2:26,y2:16,n:"サーバールーム"},
+  {x1:1,y1:17,x2:26,y2:19,n:"3F 廊下・階段ホール"}
+ ]
+];
+const securityCards=[
+ // First card: 1F, deliberately separated from the BLUE room door.
+ {floor:0,x:2.35,y:2.35,color:"BLUE",hex:"#3198ff",found:false}
+];
+
+// Each next card is inside the preceding card room.
+const roomSecurityCards=[
+ {room:"blue",x:3.5,y:1.65,color:"GREEN",hex:"#35c96d",found:false},
+ {room:"green",x:3.5,y:1.65,color:"YELLOW",hex:"#f0c842",found:false},
+ {room:"yellow",x:3.5,y:1.65,color:"RED",hex:"#e44747",found:false},
+ {room:"red",x:3.5,y:1.65,color:"BLACK",hex:"#111820",found:false}
+];
+
+// STAGE 2 final objective
+const masterSecurityKey={
+ room:"black",x:3.5,y:1.65,found:false
+};
+
+// Special 1F emergency exit.
+// Kept away from the initial BLUE-card position/start-side exploration.
+const emergencyExit={
+ floor:0,x:4.35,y:18.00,
+ label:"EMERGENCY EXIT"
+};
+
+let stage2Clear=false;
+
+let monster={
+ x:13.5,y:10.5,floor:0,dir:Math.PI,
+ chasing:false,lastSeen:0,wanderTimer:0
+};
+let monsterCaught=false;
+let monsterAudioCtx=null,monsterMasterGain=null,monsterChaseGain=null,monsterChaseOsc=null;
+let monsterLastHeartbeat=0;
+
+
+let foundCards=0;
+const accessDoors=[
+ {id:"blue",floor:0,x:11.5,y:10.5,card:"BLUE",label:"STAFF ACCESS",open:false},
+ {id:"green",floor:0,x:20.5,y:6.5,card:"GREEN",label:"MEETING ROOM",open:false},
+ {id:"yellow",floor:1,x:7.5,y:16.5,card:"YELLOW",label:"ARCHIVE",open:false},
+ {id:"red",floor:1,x:20.5,y:3.5,card:"RED",label:"SERVER ROOM",open:false},
+ {id:"black",floor:2,x:18.5,y:5.5,card:"BLACK",label:"EXECUTIVE AREA",open:false}
+];
+function hasCard(name){
+ return securityCards.some(c=>c.color===name&&c.found) ||
+        roomSecurityCards.some(c=>c.color===name&&c.found);
+}
+function enterCardRoom(roomId){
+ returnFromRoom={floor,x:player.x,y:player.y,dir:player.dir};
+ specialRoom=roomId;
+ player.x=3.5;
+ player.y=4.25;
+ player.dir=-Math.PI/2;
+ showMessage(CARD_ROOM_INFO[roomId].label,1000);
+}
+
+function exitCardRoom(){
+ if(!returnFromRoom)return;
+ specialRoom=null;
+ floor=returnFromRoom.floor;
+ player.x=returnFromRoom.x;
+ player.y=returnFromRoom.y;
+ player.dir=returnFromRoom.dir;
+ returnFromRoom=null;
+ showMessage("オフィス通路へ戻った",900);
+}
+
+function nearCardRoomExit(){
+ return !!specialRoom &&
+        player.y>3.85 &&
+        Math.abs(player.x-3.5)<1.05;
+}
+
+function nearbyAccessDoor(){
+ if(specialRoom)return null;
+ // An authenticated/open door remains usable so the player can enter/re-enter its room.
+ return accessDoors.find(d=>d.floor===floor&&Math.hypot(player.x-d.x,player.y-d.y)<1.45);
+}
+
+
+
+let floor=0,player={...starts[0]},keys={},running=false,last=performance.now(),messageTimer=0;
+let specialRoom=null, returnFromRoom=null;
+
+// All five card rooms share the exact Ver.6e room dimensions.
+const CARD_ROOM_MAP=[
+"1111111",
+"1000001",
+"1000001",
+"1000001",
+"1000001",
+"1110111"
+];
+
+const CARD_ROOM_INFO={
+ blue:{label:"BLUE ROOM",wall:"#72b7ff"},
+ green:{label:"GREEN ROOM",wall:"#7fcd97"},
+ yellow:{label:"YELLOW ROOM",wall:"#e6cf70"},
+ red:{label:"RED ROOM",wall:"#dc7777"},
+ black:{label:"BLACK ROOM",wall:"#383b40"}
+};
+
+const FOV=Math.PI/3.05;
+function map(){return specialRoom?CARD_ROOM_MAP:MAPS[floor]}
+function wallAt(x,y){
+ const M=map(),ix=Math.floor(x),iy=Math.floor(y);
+ return iy<0||iy>=M.length||ix<0||ix>=M[0].length||M[iy][ix]==='1';
+}
+function tryMove(nx,ny){
+ const r=.20;
+ if(!wallAt(nx-r,player.y)&&!wallAt(nx+r,player.y))player.x=nx;
+ if(!wallAt(player.x,ny-r)&&!wallAt(player.x,ny+r))player.y=ny;
+}
+function norm(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}
+function castRay(a){
+ const cs=Math.cos(a),sn=Math.sin(a);let d=.02;
+ while(d<30){const x=player.x+cs*d,y=player.y+sn*d;if(wallAt(x,y))return {d,x,y};d+=.025}
+ return {d:30,x:player.x+cs*30,y:player.y+sn*30};
+}
+function room(){
+ if(specialRoom)return CARD_ROOM_INFO[specialRoom].label;
+ const z=roomZones[floor].find(z=>player.x>=z.x1&&player.x<=z.x2&&player.y>=z.y1&&player.y<=z.y2);
+ return z?z.n:"オフィス通路";
+}
+function showMessage(t,ms=1200){msg.textContent=t;msg.classList.add('on');clearTimeout(messageTimer);messageTimer=setTimeout(()=>msg.classList.remove('on'),ms)}
+function nearbyTransfer(){
+ if(specialRoom)return null;
+ return floorTransfers[floor].find(p=>Math.hypot(player.x-p.x,player.y-p.y)<1.35);
+}
+function useTransfer(p){
+ fade.style.opacity=1;
+ setTimeout(()=>{
+   floor=p.to;player.x=p.tx;player.y=p.ty;
+   floorBadge.textContent=(floor+1)+"F";
+   roomName.textContent=room();
+   fade.style.opacity=0;
+   showMessage((floor+1)+"F に転送された",1200);
+ },230);
+}
+function interact(){
+ if(nearMasterSecurityKey()){
+   masterSecurityKey.found=true;
+   showMessage("MASTER SECURITY KEY ACQUIRED",1800);
+   setTimeout(()=>showMessage("EMERGENCY EXIT UNLOCKED",2200),1900);
+   return;
+ }
+ if(nearEmergencyExit()){
+   if(!masterSecurityKey.found){
+     showMessage("LOCKED — MASTER SECURITY KEY REQUIRED",2000);
+   }else{
+     triggerStage2Clear();
+   }
+   return;
+ }
+ if(nearCardRoomExit()){exitCardRoom();return;}
+ const c=nearbyCard();
+ if(c){
+   c.found=true;foundCards++;
+   cardCount.textContent=`SECURITY CARDS ${foundCards} / 5`;
+   if(foundCards===5){
+   showMessage("ALL SECURITY CARDS ACQUIRED",3000);
+   allCardsBanner.classList.add("show");
+   setTimeout(()=>allCardsBanner.classList.remove("show"),3000);
+ }else{
+   showMessage(`${c.color} SECURITY CARD を取得`,1500);
+ }
+   return;
+ }
+ const nd=nearbyAccessDoor();
+ if(nd){
+   ctx.fillStyle=hasCard(nd.card)?"#bfffe0":"#ffd0d0";
+   ctx.font="bold 17px system-ui";ctx.textAlign="center";
+   ctx.shadowBlur=10;ctx.shadowColor=hasCard(nd.card)?"#5de49c":"#ef5959";
+   ctx.fillText(nd.open?`E：${CARD_ROOM_INFO[nd.id].label}へ入る`:`E：${nd.label} — ${nd.card} CARD`,W/2,H*.73);
+   ctx.shadowBlur=0;
+ }
+ const nc=nearbyCard();
+ if(nc){
+   ctx.fillStyle="rgba(245,250,255,.97)";
+   ctx.font="bold 17px system-ui";ctx.textAlign="center";
+   ctx.shadowBlur=10;ctx.shadowColor=nc.hex;
+   ctx.fillText(`E：${nc.color} SECURITY CARDを拾う`,W/2,H*.78);
+   ctx.shadowBlur=0;
+ }
+ const d=nearbyAccessDoor();
+ if(d){
+   if(!hasCard(d.card)){
+     showMessage(`ACCESS DENIED — ${d.card} CARD REQUIRED`,1800);
+   }else{
+     const firstOpen=!d.open;
+     d.open=true;
+     showMessage(firstOpen?"ACCESS GRANTED":"ENTERING "+CARD_ROOM_INFO[d.id].label,900);
+     setTimeout(()=>enterCardRoom(d.id),300);
+   }
+   return;
+ }
+ const p=nearbyTransfer();
+ if(p){useTransfer(p);return}
+ showMessage("今は調べられるものはない",700);
+}
+
+function monsterDist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function monsterLos(ax,ay,bx,by){
+ const d=Math.hypot(bx-ax,by-ay),steps=Math.ceil(d/.08);
+ for(let i=1;i<steps;i++){
+   const t=i/steps;
+   if(wallAt(ax+(bx-ax)*t,ay+(by-ay)*t))return false;
+ }
+ return true;
+}
+function monsterCanMove(x,y,r=.20){
+ const M=map(),pts=[[x-r,y-r],[x+r,y-r],[x-r,y+r],[x+r,y+r]];
+ return pts.every(([px,py])=>{
+   const ix=Math.floor(px),iy=Math.floor(py);
+   return iy>=0&&iy<M.length&&ix>=0&&ix<M[0].length&&M[iy][ix]!=='1';
+ });
+}
+function monsterTryMove(nx,ny){
+ if(monsterCanMove(nx,monster.y))monster.x=nx;
+ if(monsterCanMove(monster.x,ny))monster.y=ny;
+}
+function ensureMonsterAudio(){
+ if(!monsterAudioCtx){
+   monsterAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+   monsterMasterGain=monsterAudioCtx.createGain();
+   monsterMasterGain.gain.value=.34;
+   monsterMasterGain.connect(monsterAudioCtx.destination);
+
+   monsterChaseGain=monsterAudioCtx.createGain();
+   monsterChaseGain.gain.value=0;
+   monsterChaseOsc=monsterAudioCtx.createOscillator();
+   monsterChaseOsc.type='sawtooth';
+   monsterChaseOsc.frequency.value=43;
+   const f=monsterAudioCtx.createBiquadFilter();
+   f.type='lowpass';f.frequency.value=140;
+   monsterChaseOsc.connect(f);f.connect(monsterChaseGain);
+   monsterChaseGain.connect(monsterMasterGain);
+   monsterChaseOsc.start();
+ }
+ if(monsterAudioCtx.state==='suspended')monsterAudioCtx.resume();
+}
+function playMonsterHeartbeat(intensity=.35){
+ intensity=Math.max(0,Math.min(1,intensity));
+ ensureMonsterAudio();
+ const now=monsterAudioCtx.currentTime;
+ const strength=.15+.20*intensity;
+ const beat=(start,freq,vol,dur)=>{
+   const o=monsterAudioCtx.createOscillator(),g=monsterAudioCtx.createGain(),f=monsterAudioCtx.createBiquadFilter();
+   o.type='sine';o.frequency.setValueAtTime(freq,start);o.frequency.exponentialRampToValueAtTime(freq*.58,start+dur);
+   f.type='lowpass';f.frequency.value=150;
+   g.gain.setValueAtTime(.0001,start);g.gain.exponentialRampToValueAtTime(vol,start+.012);g.gain.exponentialRampToValueAtTime(.0001,start+dur);
+   o.connect(f);f.connect(g);g.connect(monsterMasterGain);o.start(start);o.stop(start+dur+.02);
+ };
+ beat(now,72,strength,.19);beat(now+.19,61,strength*.82,.23);
+ const o=monsterAudioCtx.createOscillator(),g=monsterAudioCtx.createGain();
+ o.type='triangle';o.frequency.setValueAtTime(42,now);
+ g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.055+.065*intensity,now+.018);g.gain.exponentialRampToValueAtTime(.0001,now+.32);
+ o.connect(g);g.connect(monsterMasterGain);o.start(now);o.stop(now+.34);
+}
+function updateMonsterThreat(d,chasing){
+ const danger=document.getElementById("monsterDanger");
+ if(!monsterAudioCtx||!monsterChaseGain){
+   if(chasing)ensureMonsterAudio(); else return;
+ }
+ const now=monsterAudioCtx.currentTime;
+ const proximity=Math.max(0,Math.min(1,(5.3-d)/4.84));
+ const curve=Math.pow(proximity,1.35);
+ const target=chasing?.014+.095*curve:0;
+ monsterChaseGain.gain.cancelScheduledValues(now);
+ monsterChaseGain.gain.linearRampToValueAtTime(target,now+.10);
+ if(chasing){
+   let alpha,spread,red;
+   if(proximity<.35){alpha=.14+.16*(proximity/.35);spread=150+35*(proximity/.35);red=145}
+   else if(proximity<.70){const p=(proximity-.35)/.35;alpha=.30+.25*p;spread=185+45*p;red=175}
+   else{const p=(proximity-.70)/.30;alpha=.55+.34*p;spread=230+85*p;red=205+35*p}
+   danger.style.boxShadow=`inset 0 0 ${spread}px rgba(${Math.round(red)},0,0,${Math.min(.92,alpha)})`;
+   danger.style.background=`radial-gradient(circle at center,rgba(110,0,0,0) 38%,rgba(155,0,0,${.04+.16*curve}) 70%,rgba(120,0,0,${.12+.34*curve}) 100%)`;
+   const t=performance.now(),gap=1120-830*curve;
+   if(t-monsterLastHeartbeat>gap){monsterLastHeartbeat=t;playMonsterHeartbeat(curve)}
+ }else{
+   danger.style.boxShadow='inset 0 0 180px rgba(170,0,0,0)';
+   danger.style.background='transparent';
+ }
+}
+function playMonsterCaptureSound(){
+ ensureMonsterAudio();
+ const now=monsterAudioCtx.currentTime;
+ const impact=monsterAudioCtx.createOscillator(),ig=monsterAudioCtx.createGain();
+ impact.type='sawtooth';impact.frequency.setValueAtTime(105,now);impact.frequency.exponentialRampToValueAtTime(34,now+.42);
+ ig.gain.setValueAtTime(.0001,now);ig.gain.exponentialRampToValueAtTime(.24,now+.018);ig.gain.exponentialRampToValueAtTime(.0001,now+.48);
+ impact.connect(ig);ig.connect(monsterMasterGain);impact.start(now);impact.stop(now+.50);
+ [510,677].forEach((f,i)=>{
+   const o=monsterAudioCtx.createOscillator(),g=monsterAudioCtx.createGain();
+   o.type=i?'square':'sawtooth';o.frequency.setValueAtTime(f,now+.025);o.frequency.exponentialRampToValueAtTime(f*.58,now+.34);
+   g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.065,now+.035);g.gain.exponentialRampToValueAtTime(.0001,now+.38);
+   o.connect(g);g.connect(monsterMasterGain);o.start(now);o.stop(now+.40);
+ });
+}
+function captureByMonster(){
+ if(monsterCaught||stage2Clear)return;
+ monsterCaught=true;running=false;
+ playMonsterCaptureSound();
+ const f=document.getElementById("monsterCaptureFlash");
+ f.classList.remove("hit");void f.offsetWidth;f.classList.add("hit");
+ document.exitPointerLock?.();
+ setTimeout(()=>document.getElementById("monsterGameOver").classList.add("show"),620);
+}
+function updateMonster(dt){
+ if(!running||monsterCaught||stage2Clear)return;
+
+ // Card rooms are temporary safe rooms; the monster patrols the office floors.
+ if(specialRoom){
+   monster.chasing=false;updateMonsterThreat(99,false);return;
+ }
+
+ // As in Stage 1, danger begins after the first objective has been collected.
+ if(foundCards===0){
+   monster.chasing=false;updateMonsterThreat(99,false);return;
+ }
+
+ // The same creature follows the player between office floors.
+ if(monster.floor!==floor){
+   monster.floor=floor;
+   const candidates=[[13.5,10.5],[20.5,15.5],[7.5,5.5],[24.5,10.5]];
+   let best=candidates.find(([x,y])=>monsterCanMove(x,y)&&Math.hypot(x-player.x,y-player.y)>6);
+   if(!best)best=[13.5,10.5];
+   monster.x=best[0];monster.y=best[1];monster.chasing=false;monster.lastSeen=0;
+ }
+
+ const tp=Math.atan2(player.y-monster.y,player.x-monster.x);
+ const d=monsterDist(player,monster);
+ const clearSight=monsterLos(monster.x,monster.y,player.x,player.y);
+ const facingDiff=Math.abs(norm(tp-monster.dir));
+
+ // Same Stage 1 Ver.13e sensing: close-range 360° notice + forward vision.
+ const nearNotice=d<1.9&&clearSight;
+ const forwardNotice=d<5.3&&clearSight&&facingDiff<1.08;
+ const detected=nearNotice||forwardNotice;
+
+ if(detected){
+   const newly=!monster.chasing;
+   monster.chasing=true;monster.lastSeen=performance.now();
+   if(newly)monster.dir=tp;
+ }
+ if(monster.chasing&&performance.now()-monster.lastSeen>2200&&!clearSight)monster.chasing=false;
+
+ const speed=monster.chasing?1.25:.38;
+ if(monster.chasing){
+   const target=Math.atan2(player.y-monster.y,player.x-monster.x);
+   monster.dir+=norm(target-monster.dir)*Math.min(1,dt*4.2);
+ }else{
+   monster.wanderTimer-=dt;
+   if(monster.wanderTimer<=0){
+     monster.wanderTimer=1.8+Math.random()*2.8;
+     monster.dir+=(Math.random()-.5)*1.5;
+   }
+ }
+ const ox=monster.x,oy=monster.y;
+ monsterTryMove(monster.x+Math.cos(monster.dir)*speed*dt,monster.y+Math.sin(monster.dir)*speed*dt);
+ if(Math.hypot(monster.x-ox,monster.y-oy)<.005)monster.dir+=(Math.random()>.5?1:-1)*(Math.PI/2+Math.random()*.4);
+
+ updateMonsterThreat(d,monster.chasing);
+ if(monsterDist(player,monster)<.46)captureByMonster();
+}
+function spritePos(o,FOVarg){
+ if(specialRoom||o.floor!==floor)return null;
+ const dx=o.x-player.x,dy=o.y-player.y,d=Math.hypot(dx,dy),ang=norm(Math.atan2(dy,dx)-player.dir);
+ if(Math.abs(ang)>FOVarg*.68||!monsterLos(player.x,player.y,o.x,o.y))return null;
+ const sx=W/2+(ang/(FOVarg/2))*W/2,h=Math.min(H*1.8,H/d*1.35);
+ return {d,ang,sx,h,sy:H/2-h*.10};
+}
+
+function drawMonster(FOV){
+  const q=spritePos(monster,FOV);
+  if(!q)return;
+
+  const s=q.h*1.58;
+  const x=q.sx;
+  const y=q.sy+q.h*.22;
+  const chase=monster.chasing;
+  const t=performance.now()/1000;
+
+  // Determine which side of the monster the player is actually looking at.
+  // faceRel = 0 means monster faces player; PI means its back faces player.
+  const angleMonsterToPlayer=Math.atan2(player.y-monster.y,player.x-monster.x);
+  const faceRel=norm(angleMonsterToPlayer-monster.dir);
+  const absRel=Math.abs(faceRel);
+
+  let view='front';
+  if(absRel>Math.PI*.75){
+    view='back';
+  }else if(absRel>Math.PI*.25){
+    view=faceRel>0?'right':'left';
+  }
+
+  ctx.save();
+  ctx.translate(x,y);
+  const sway=Math.sin(t*(chase?7.5:2.2))*s*(chase?.009:.004);
+  ctx.translate(sway,0);
+
+  // Ground shadow
+  ctx.save();
+  ctx.globalAlpha=.5;
+  ctx.fillStyle="#000";
+  ctx.beginPath();
+  ctx.ellipse(0,s*.31,s*.27,s*.045,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Legs
+  ctx.strokeStyle="#030405";
+  ctx.lineCap="round";
+  ctx.lineWidth=Math.max(5,s*.045);
+  ctx.beginPath();
+  if(view==='left'||view==='right'){
+    ctx.moveTo(-s*.035,s*.03);ctx.lineTo(-s*.065,s*.31);
+    ctx.moveTo( s*.035,s*.03);ctx.lineTo( s*.075,s*.31);
+  }else{
+    ctx.moveTo(-s*.065,s*.03);ctx.lineTo(-s*.11,s*.31);
+    ctx.moveTo( s*.065,s*.03);ctx.lineTo( s*.11,s*.31);
+  }
+  ctx.stroke();
+
+  // Torso: narrower in side view.
+  const sideView=view==='left'||view==='right';
+  const torsoW=sideView?s*.105:s*.17;
+  let body=ctx.createLinearGradient(-torsoW,-s*.25,torsoW,s*.12);
+  body.addColorStop(0,"#020303");
+  body.addColorStop(.48,chase?"#160909":"#090c0d");
+  body.addColorStop(1,"#010101");
+  ctx.fillStyle=body;
+  ctx.beginPath();
+  ctx.moveTo(-torsoW,-s*.18);
+  ctx.lineTo(-torsoW*.63,-s*.27);
+  ctx.lineTo(0,-s*.235);
+  ctx.lineTo(torsoW*.63,-s*.27);
+  ctx.lineTo(torsoW,-s*.18);
+  ctx.lineTo(torsoW*.53,s*.07);
+  ctx.lineTo(-torsoW*.53,s*.07);
+  ctx.closePath();
+  ctx.fill();
+
+  // Front ribs only when chest is visible.
+  if(view==='front'){
+    ctx.strokeStyle=chase?"rgba(145,35,35,.34)":"rgba(115,125,125,.20)";
+    ctx.lineWidth=Math.max(1,s*.007);
+    for(let i=0;i<5;i++){
+      const yy=-s*.16+i*s*.038;
+      ctx.beginPath();
+      ctx.moveTo(-s*.10,yy);
+      ctx.quadraticCurveTo(0,yy+s*.018,s*.10,yy);
+      ctx.stroke();
+    }
+  }
+
+  // Back spine when the monster faces away.
+  if(view==='back'){
+    ctx.strokeStyle="rgba(82,92,92,.30)";
+    ctx.lineWidth=Math.max(1,s*.009);
+    ctx.beginPath();
+    ctx.moveTo(0,-s*.21);
+    ctx.lineTo(0,s*.035);
+    ctx.stroke();
+    for(let i=0;i<5;i++){
+      const yy=-s*.16+i*s*.042;
+      ctx.beginPath();
+      ctx.moveTo(-s*.065,yy);
+      ctx.lineTo(s*.065,yy+s*.006);
+      ctx.stroke();
+    }
+  }
+
+  // Long arms. Side view collapses far arm and shifts near arm.
+  ctx.strokeStyle="#030405";
+  ctx.lineWidth=Math.max(6,s*.044);
+  ctx.beginPath();
+  if(view==='front'||view==='back'){
+    ctx.moveTo(-s*.145,-s*.19);ctx.quadraticCurveTo(-s*.27,-s*.01,-s*.30,s*.25);
+    ctx.moveTo( s*.145,-s*.19);ctx.quadraticCurveTo( s*.27,-s*.01, s*.30,s*.25);
+  }else{
+    const dir=view==='right'?1:-1;
+    ctx.moveTo(-dir*s*.035,-s*.18);ctx.quadraticCurveTo(-dir*s*.08,s*.00,-dir*s*.10,s*.23);
+    ctx.moveTo( dir*s*.075,-s*.18);ctx.quadraticCurveTo( dir*s*.20,s*.00, dir*s*.23,s*.27);
+  }
+  ctx.stroke();
+
+  // Claws
+  ctx.lineWidth=Math.max(1.5,s*.010);
+  const hands=(view==='front'||view==='back')
+    ?[[-1,-s*.30,s*.245],[1,s*.30,s*.245]]
+    :(view==='right'
+      ?[[-1,-s*.10,s*.225],[1,s*.23,s*.265]]
+      :[[-1,-s*.23,s*.265],[1,s*.10,s*.225]]);
+  for(const [side,hx,hy] of hands){
+    for(let i=-2;i<=2;i++){
+      const spread=i*s*.010;
+      ctx.beginPath();
+      ctx.moveTo(hx,hy);
+      ctx.quadraticCurveTo(
+        hx+side*s*(.020+.006*Math.abs(i)),
+        hy+s*.035,
+        hx+side*s*(.038+.007*Math.abs(i))+spread,
+        hy+s*(.075+.006*Math.abs(i))
+      );
+      ctx.stroke();
+    }
+  }
+
+  // Neck
+  ctx.fillStyle="#030405";
+  const neckW=sideView?s*.025:s*.035;
+  ctx.fillRect(-neckW,-s*.385,neckW*2,s*.19);
+
+  // Head
+  ctx.save();
+  ctx.translate(0,-s*.47);
+  ctx.rotate(Math.sin(t*(chase?5.5:1.5))*(chase?.035:.014));
+
+  // Medusa-like hair/tendrils. Back view gets slightly wider silhouette.
+  ctx.strokeStyle="#020303";
+  ctx.lineCap="round";
+  ctx.lineWidth=Math.max(3,s*.022);
+  const tendrils=[
+    [-.105,-.13,-.20,-.25,-.26,-.17],
+    [-.075,-.16,-.12,-.30,-.19,-.29],
+    [-.035,-.18,-.04,-.34,-.10,-.37],
+    [ .005,-.19, .04,-.35, .02,-.40],
+    [ .045,-.18, .12,-.33, .11,-.38],
+    [ .080,-.16, .19,-.28, .20,-.32],
+    [ .110,-.12, .25,-.21, .27,-.15],
+    [-.12,-.08,-.27,-.13,-.29,-.05],
+    [ .12,-.08, .27,-.13, .29,-.04]
+  ];
+  tendrils.forEach((a,i)=>{
+    const widen=view==='back'?1.12:1;
+    const wig=Math.sin(t*(chase?5.0:2.0)+i*1.37)*s*.018;
+    ctx.beginPath();
+    ctx.moveTo(a[0]*s,a[1]*s);
+    ctx.bezierCurveTo(a[2]*s*widen+wig,a[3]*s,a[4]*s*widen-wig,a[5]*s,a[4]*s*widen+wig*.5,a[5]*s+s*.025);
+    ctx.stroke();
+  });
+
+  // Head silhouette differs clearly by orientation.
+  let head=ctx.createLinearGradient(-s*.14,-s*.17,s*.14,s*.16);
+  head.addColorStop(0,"#141718");
+  head.addColorStop(.52,"#050607");
+  head.addColorStop(1,"#010101");
+  ctx.fillStyle=head;
+
+  if(view==='front'||view==='back'){
+    ctx.beginPath();
+    ctx.moveTo(-s*.105,-s*.16);
+    ctx.lineTo(-s*.16,-s*.055);
+    ctx.lineTo(-s*.135,s*.09);
+    ctx.lineTo(-s*.075,s*.16);
+    ctx.lineTo(0,s*.185);
+    ctx.lineTo(s*.075,s*.16);
+    ctx.lineTo(s*.135,s*.09);
+    ctx.lineTo(s*.16,-s*.055);
+    ctx.lineTo(s*.105,-s*.16);
+    ctx.lineTo(0,-s*.205);
+    ctx.closePath();
+    ctx.fill();
+  }else{
+    const dir=view==='right'?1:-1;
+    ctx.beginPath();
+    ctx.moveTo(-dir*s*.055,-s*.17);
+    ctx.lineTo(dir*s*.075,-s*.19);
+    ctx.lineTo(dir*s*.155,-s*.075);
+    ctx.lineTo(dir*s*.13,s*.075);
+    ctx.lineTo(dir*s*.055,s*.16);
+    ctx.lineTo(-dir*s*.045,s*.145);
+    ctx.lineTo(-dir*s*.09,s*.035);
+    ctx.lineTo(-dir*s*.085,-s*.10);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if(view==='front'){
+    // Full terrifying face.
+    ctx.fillStyle="#000";
+    ctx.beginPath();
+    ctx.moveTo(-s*.115,-s*.07);ctx.lineTo(-s*.018,-s*.035);ctx.lineTo(-s*.095,s*.005);ctx.closePath();
+    ctx.moveTo( s*.115,-s*.07);ctx.lineTo( s*.018,-s*.035);ctx.lineTo( s*.095,s*.005);ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowBlur=chase?24:13;
+    ctx.shadowColor=chase?"#ff2525":"#e8fbff";
+    ctx.fillStyle=chase?"#ffdede":"#f5ffff";
+    ctx.beginPath();
+    ctx.arc(-s*.067,-s*.035,s*.0085,0,Math.PI*2);
+    ctx.arc( s*.067,-s*.035,s*.0085,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    const mouthTop=(u)=>{
+      const edge=Math.abs(u-.5)*2;
+      return(.030+(1-edge)*.070)*s;
+    };
+    const mouthBottom=(u)=>{
+      const edge=Math.abs(u-.5)*2;
+      return(.075+(1-edge)*.105)*s;
+    };
+
+    ctx.fillStyle="#010000";
+    ctx.beginPath();
+    ctx.moveTo(-s*.135,s*.030);
+    ctx.bezierCurveTo(-s*.085,s*.105,-s*.045,s*.125,0,s*.135);
+    ctx.bezierCurveTo(s*.045,s*.125,s*.085,s*.105,s*.135,s*.030);
+    ctx.bezierCurveTo(s*.095,s*.155,s*.055,s*.195,0,s*.205);
+    ctx.bezierCurveTo(-s*.055,s*.195,-s*.095,s*.155,-s*.135,s*.030);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle=chase?"rgba(205,38,45,.86)":"rgba(125,48,52,.72)";
+    ctx.lineWidth=Math.max(1.2,s*.008);
+    ctx.beginPath();
+    ctx.moveTo(-s*.137,s*.027);
+    ctx.bezierCurveTo(-s*.09,s*.095,-s*.045,s*.12,0,s*.13);
+    ctx.bezierCurveTo(s*.045,s*.12,s*.09,s*.095,s*.137,s*.027);
+    ctx.stroke();
+
+    ctx.fillStyle="#e8e2d3";
+    const teeth=15;
+    for(let i=0;i<teeth;i++){
+      const u=i/(teeth-1);
+      const tx=(-.118+u*.236)*s;
+      const top=mouthTop(u),bottom=mouthBottom(u);
+      const tw=s*(.012+.003*(1-Math.abs(u-.5)*2));
+      ctx.beginPath();
+      ctx.moveTo(tx-tw/2,top);ctx.lineTo(tx+tw/2,top);ctx.lineTo(tx,(top+bottom)*.54);ctx.closePath();ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(tx-tw/2,bottom);ctx.lineTo(tx+tw/2,bottom);ctx.lineTo(tx,(top+bottom)*.61);ctx.closePath();ctx.fill();
+    }
+  }else if(view==='back'){
+    // Back of head: absolutely no eyes or grin.
+    ctx.strokeStyle="rgba(74,82,83,.26)";
+    ctx.lineWidth=Math.max(1,s*.008);
+    ctx.beginPath();
+    ctx.moveTo(-s*.07,-s*.10);
+    ctx.quadraticCurveTo(0,-s*.14,s*.07,-s*.10);
+    ctx.moveTo(-s*.055,s*.015);
+    ctx.quadraticCurveTo(0,s*.055,s*.055,s*.015);
+    ctx.stroke();
+  }else{
+    // Side profile: one eye and a small edge of the grin.
+    const dir=view==='right'?1:-1;
+
+    ctx.fillStyle="#000";
+    ctx.beginPath();
+    ctx.moveTo(dir*s*.035,-s*.065);
+    ctx.lineTo(dir*s*.12,-s*.035);
+    ctx.lineTo(dir*s*.050,s*.002);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowBlur=chase?20:9;
+    ctx.shadowColor=chase?"#ff2525":"#dff9ff";
+    ctx.fillStyle=chase?"#ffdede":"#f5ffff";
+    ctx.beginPath();
+    ctx.arc(dir*s*.072,-s*.030,s*.008,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle=chase?"rgba(190,35,40,.76)":"rgba(110,48,50,.58)";
+    ctx.lineWidth=Math.max(1.1,s*.009);
+    ctx.beginPath();
+    ctx.moveTo(dir*s*.035,s*.060);
+    ctx.quadraticCurveTo(dir*s*.100,s*.100,dir*s*.135,s*.050);
+    ctx.stroke();
+
+    // Three visible side fangs.
+    ctx.fillStyle="#e8e2d3";
+    for(let i=0;i<3;i++){
+      const fx=dir*s*(.065+i*.022);
+      const fy=s*(.066+i*.010);
+      ctx.beginPath();
+      ctx.moveTo(fx-dir*s*.008,fy);
+      ctx.lineTo(fx+dir*s*.008,fy);
+      ctx.lineTo(fx,fy+s*.030);
+      ctx.closePath();ctx.fill();
+    }
+  }
+
+  // Facial/head cracks on visible surfaces.
+  ctx.strokeStyle="rgba(0,0,0,.88)";
+  ctx.lineWidth=Math.max(1,s*.007);
+  ctx.beginPath();
+  if(view==='front'){
+    ctx.moveTo(-s*.095,-s*.13);ctx.lineTo(-s*.065,-s*.09);ctx.lineTo(-s*.085,-s*.05);
+    ctx.moveTo( s*.098,-s*.13);ctx.lineTo( s*.068,-s*.09);ctx.lineTo( s*.088,-s*.05);
+  }else if(view==='back'){
+    ctx.moveTo(-s*.055,-s*.13);ctx.lineTo(-s*.020,-s*.08);ctx.lineTo(-s*.045,-s*.03);
+  }else{
+    const dir=view==='right'?1:-1;
+    ctx.moveTo(dir*s*.04,-s*.13);ctx.lineTo(dir*s*.075,-s*.09);ctx.lineTo(dir*s*.05,-s*.045);
+  }
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Chase aura only while actively pursuing.
+  if(chase){
+    ctx.save();
+    ctx.globalCompositeOperation="screen";
+    const aura=ctx.createRadialGradient(0,-s*.13,s*.06,0,-s*.10,s*.48);
+    aura.addColorStop(0,"rgba(135,0,0,.11)");
+    aura.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=aura;
+    ctx.beginPath();
+    ctx.ellipse(0,-s*.10,s*.48,s*.64,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function update(dt){
+ if(!running)return;
+ const run=(keys.ShiftLeft||keys.ShiftRight)?3.25:2.05;
+ let f=0,side=0;
+ if(keys.KeyW)f+=1;if(keys.KeyS)f-=1;if(keys.KeyD)side+=1;if(keys.KeyA)side-=1;
+ if(f||side){
+   const l=Math.hypot(f,side);f/=l;side/=l;
+   const dx=(Math.cos(player.dir)*f+Math.cos(player.dir+Math.PI/2)*side)*run*dt;
+   const dy=(Math.sin(player.dir)*f+Math.sin(player.dir+Math.PI/2)*side)*run*dt;
+   tryMove(player.x+dx,player.y+dy);
+ }
+ roomName.textContent=room();
+ updateMonster(dt);
+}
+
+
+
+
+function projectMarker(wx,wy){
+  const dx=wx-player.x,dy=wy-player.y;
+  const d=Math.hypot(dx,dy);
+  const rel=norm(Math.atan2(dy,dx)-player.dir);
+  if(Math.abs(rel)>FOV*.62 || d<.15)return null;
+  return {d,rel,sx:W/2+(rel/(FOV/2))*(W/2)};
+}
+
+
+function cardProjection(c){
+ const dx=c.x-player.x,dy=c.y-player.y,d=Math.hypot(dx,dy);
+ const rel=norm(Math.atan2(dy,dx)-player.dir);
+ if(Math.abs(rel)>FOV*.62||d<.12)return null;
+ const steps=Math.ceil(d/.08);
+ for(let i=1;i<steps;i++){let t=i/steps;if(wallAt(player.x+dx*t,player.y+dy*t))return null}
+ return {d,sx:W/2+(rel/(FOV/2))*(W/2)};
+}
+function nearbyCard(){
+ if(specialRoom){
+   return roomSecurityCards.find(c=>
+     !c.found && c.room===specialRoom &&
+     Math.hypot(player.x-c.x,player.y-c.y)<1.60
+   ) || null;
+ }
+ return securityCards.find(c=>
+   !c.found && c.floor===floor &&
+   Math.hypot(player.x-c.x,player.y-c.y)<1.60
+ ) || null;
+}
+function drawSecurityCards(){
+ const list=(specialRoom ? roomSecurityCards.filter(c=>!c.found&&c.room===specialRoom) : securityCards.filter(c=>!c.found&&c.floor===floor))
+   .map(c=>({c,q:cardProjection(c)})).filter(v=>v.q&&v.q.d<11).sort((a,b)=>b.q.d-a.q.d);
+ for(const {c,q} of list){
+   const sc=Math.min(H*.44,H/(q.d*.95)),cw=sc*.34,ch=sc*.21;
+   ctx.save();ctx.translate(q.sx,H/2+sc*.40);ctx.rotate(-.08);
+   ctx.shadowBlur=12;ctx.shadowColor=c.hex;
+   ctx.fillStyle="#e7edf0";ctx.strokeStyle=c.hex;ctx.lineWidth=Math.max(2,sc*.012);
+   ctx.beginPath();ctx.roundRect(-cw/2,-ch,cw,ch,Math.max(3,sc*.018));ctx.fill();ctx.stroke();
+   ctx.shadowBlur=0;ctx.fillStyle=c.hex;ctx.fillRect(-cw*.46,-ch*.86,cw*.92,ch*.22);
+   ctx.fillStyle="#8e989e";ctx.fillRect(-cw*.39,-ch*.52,cw*.20,ch*.30);
+   ctx.fillStyle="#465159";ctx.fillRect(-cw*.10,-ch*.50,cw*.39,ch*.035);ctx.fillRect(-cw*.10,-ch*.40,cw*.30,ch*.028);
+   ctx.fillStyle="#fff";ctx.font=`bold ${Math.max(7,sc*.032)}px system-ui`;ctx.textAlign="center";ctx.fillText(c.color,0,-ch*.69);
+   ctx.restore();
+ }
+}
+
+
+function drawCardRoomBoxOverlay(){
+ // Ver.6h: no full-screen tint/overlay.
+ // GREEN ROOM colors are applied directly to ray-cast room surfaces in draw().
+}
+
+function projectWorldObject(wx,wy){
+ const dx=wx-player.x,dy=wy-player.y;
+ const ca=Math.cos(player.dir),sa=Math.sin(player.dir);
+ const fwd=dx*ca+dy*sa;
+ const side=-dx*sa+dy*ca;
+ if(fwd<=.10)return null;
+ const f=(W/2)/Math.tan(FOV/2);
+ const sx=W/2+(side/fwd)*f;
+ if(sx<-W*.25||sx>W*1.25)return null;
+ return {sx,d:fwd,sc:f/fwd};
+}
+
+function nearMasterSecurityKey(){
+ return specialRoom==="black" &&
+        !masterSecurityKey.found &&
+        Math.hypot(player.x-masterSecurityKey.x,player.y-masterSecurityKey.y)<1.55;
+}
+
+function nearEmergencyExit(){
+ if(specialRoom || floor!==emergencyExit.floor)return false;
+
+ const dx=Math.abs(player.x-emergencyExit.x);
+ const dy=Math.abs(player.y-emergencyExit.y);
+
+ // Ver.9d:
+ // Wider rectangular interaction zone in front/around the exit.
+ // This makes E reliably work while the player is still walking toward the door.
+ return dx<2.65 && dy<2.25;
+}
+
+function drawMasterSecurityKey(){
+ if(specialRoom!=="black" || masterSecurityKey.found)return;
+ const p=projectWorldObject(masterSecurityKey.x,masterSecurityKey.y);
+ if(!p || p.d>10)return;
+
+ const w=Math.max(18,Math.min(100,p.sc*.44));
+ const h=w*.38;
+ const y=H/2+Math.min(H*.28,p.sc*.34);
+
+ ctx.save();
+ ctx.translate(p.sx,y);
+
+ // White/silver master keycard with gold security core.
+ ctx.shadowColor="rgba(255,235,155,.90)";
+ ctx.shadowBlur=Math.max(10,w*.20);
+ ctx.fillStyle="#e8eceb";
+ ctx.strokeStyle="#d3b35e";
+ ctx.lineWidth=Math.max(2,w*.035);
+ ctx.fillRect(-w/2,-h/2,w,h);
+ ctx.strokeRect(-w/2,-h/2,w,h);
+
+ ctx.fillStyle="#171b1e";
+ ctx.fillRect(-w*.38,-h*.28,w*.28,h*.56);
+ ctx.fillStyle="#d8b85f";
+ ctx.fillRect(w*.02,-h*.18,w*.35,h*.12);
+ ctx.fillRect(w*.02,h*.06,w*.24,h*.08);
+
+ ctx.fillStyle="#fff7d6";
+ ctx.font=`bold ${Math.max(7,w*.095)}px system-ui`;
+ ctx.textAlign="center";
+ ctx.fillText("MASTER",w*.15,h*.03);
+
+ ctx.restore();
+}
+
+function drawEmergencyExit(){
+ if(specialRoom || floor!==emergencyExit.floor)return;
+ const p=projectWorldObject(emergencyExit.x,emergencyExit.y);
+ // Fixed world object: only render when the actual fixed start-area location
+ // is in front of the camera and nearby enough to be seen naturally.
+ if(!p || p.d<=.18 || p.d>7.5)return;
+
+ const h=Math.max(80,Math.min(H*.70,p.sc*2.25));
+ const w=h*.48;
+ const y=H/2+h*.08;
+
+ ctx.save();
+ ctx.translate(p.sx,y);
+
+ // Distinctive heavy emergency door, visually unlike the five card doors.
+ ctx.shadowColor=masterSecurityKey.found
+   ? "rgba(245,255,255,.75)"
+   : "rgba(220,45,45,.42)";
+ ctx.shadowBlur=Math.max(8,h*.055);
+
+ ctx.fillStyle="#23282b";
+ ctx.strokeStyle="#d9e1e1";
+ ctx.lineWidth=Math.max(3,h*.018);
+ ctx.fillRect(-w/2,-h/2,w,h);
+ ctx.strokeRect(-w/2,-h/2,w,h);
+
+ // Hazard frame
+ ctx.strokeStyle="#d33b36";
+ ctx.lineWidth=Math.max(4,h*.028);
+ ctx.strokeRect(-w*.43,-h*.43,w*.86,h*.86);
+
+ // Upper EXIT light box
+ ctx.shadowBlur=Math.max(10,h*.06);
+ ctx.shadowColor=masterSecurityKey.found
+   ? "rgba(210,255,225,.95)"
+   : "rgba(255,90,90,.75)";
+ ctx.fillStyle=masterSecurityKey.found ? "#d9ffe5" : "#ffdddd";
+ ctx.fillRect(-w*.37,-h*.38,w*.74,h*.16);
+ ctx.fillStyle=masterSecurityKey.found ? "#126b38" : "#9e2020";
+ ctx.font=`900 ${Math.max(10,h*.075)}px system-ui`;
+ ctx.textAlign="center";
+ ctx.fillText("EMERGENCY",0,-h*.285);
+ ctx.fillText("EXIT",0,-h*.205);
+
+ // Horizontal panic bar
+ ctx.shadowBlur=0;
+ ctx.fillStyle=masterSecurityKey.found ? "#d7e9df" : "#8f979a";
+ ctx.fillRect(-w*.31,h*.12,w*.62,h*.055);
+
+ // Status lamp
+ ctx.beginPath();
+ ctx.arc(w*.29,-h*.04,Math.max(4,h*.025),0,Math.PI*2);
+ ctx.fillStyle=masterSecurityKey.found ? "#64f19a" : "#ef4c4c";
+ ctx.fill();
+
+ ctx.restore();
+}
+
+function triggerStage2Clear(){
+ if(stage2Clear)return;
+ stage2Clear=true;
+
+ // Lock movement during the ending so the player clearly knows the exit worked.
+ for(const k in keys) keys[k]=false;
+
+ const overlay=document.createElement("div");
+ overlay.id="stage2ClearSequence";
+ overlay.innerHTML='<div class="clearLight"></div><div class="clearTitle">STAGE CLEAR</div>';
+ document.getElementById("game").appendChild(overlay);
+
+ // Force layout, then start the 3-second light expansion.
+ void overlay.offsetWidth;
+ overlay.classList.add("play");
+
+ // Standalone Stage 2 keeps its original clear title.
+ // Trilogy mode stays white and hands control directly to the HOTEL transition.
+ if(window.parent===window){
+   setTimeout(()=>overlay.classList.add("complete"),3000);
+ }else{
+   setTimeout(()=>window.parent.postMessage({type:'ESCAPE_STAGE_CLEAR',stage:2},window.location.protocol==='file:'?'*':window.location.origin),3250);
+ }
+}
+function drawAccessDoors(){
+ if(specialRoom)return;
+ const now=performance.now()/1000;
+ for(const d of accessDoors){
+  if(d.floor!==floor)continue;
+  const q=projectMarker(d.x,d.y); if(!q||q.d>10)continue;
+  // line-of-sight check
+  const dx=d.x-player.x,dy=d.y-player.y,dist=Math.hypot(dx,dy),steps=Math.ceil(dist/.08);
+  let blocked=false;
+  for(let i=1;i<steps-1;i++){let t=i/steps;if(wallAt(player.x+dx*t,player.y+dy*t)){blocked=true;break}}
+  if(blocked)continue;
+  const sc=Math.min(H*.70,H/(q.d*.84)),x=q.sx,y=H/2+sc*.36,w=sc*.42,h=sc*.72;
+  ctx.save();ctx.translate(x,y);
+  ctx.fillStyle="#24292c";ctx.strokeStyle="#788187";ctx.lineWidth=Math.max(2,sc*.012);
+  ctx.fillRect(-w/2,-h,w,h);ctx.strokeRect(-w/2,-h,w,h);
+  ctx.fillStyle="#15191b";ctx.fillRect(w*.18,-h*.58,w*.14,h*.18);
+  ctx.fillStyle=d.open?"#6fe8ff":(hasCard(d.card)?"#62e7a3":"#ef5c5c");
+  ctx.shadowBlur=10;ctx.shadowColor=ctx.fillStyle;ctx.fillRect(w*.205,-h*.54,w*.09,h*.08);ctx.shadowBlur=0;
+  ctx.fillStyle="#dfe6e8";ctx.font=`bold ${Math.max(9,sc*.052)}px system-ui`;ctx.textAlign="center";
+  ctx.fillText(d.label,0,-h*.72);
+  ctx.font=`bold ${Math.max(8,sc*.043)}px system-ui`;ctx.fillText(`${d.card} ACCESS`,0,-h*.64);
+  if(d.open){ctx.fillStyle="#bff7ff";ctx.font=`bold ${Math.max(8,sc*.040)}px system-ui`;ctx.fillText("ENTER",0,-h*.56);}
+  ctx.restore();
+ }
+}
+function drawFloorTransfers(){
+ if(specialRoom)return;
+  const t=performance.now()/1000;
+
+  for(const p of floorTransfers[floor]){
+    const q=projectMarker(p.x,p.y);
+    if(!q || q.d>13)continue;
+
+    const sc=Math.min(H*.80,H/(q.d*.84));
+    const sx=q.sx;
+    const baseY=H/2+sc*.34;
+    const pulse=.76+.24*Math.sin(t*3.2+q.d);
+
+    ctx.save();
+    ctx.translate(sx,baseY);
+
+    // Ground light pool
+    ctx.save();
+    ctx.globalCompositeOperation="screen";
+    const rg=ctx.createRadialGradient(0,0,0,0,0,sc*.52);
+    rg.addColorStop(0,`rgba(210,250,255,${.34*pulse})`);
+    rg.addColorStop(.28,`rgba(86,220,255,${.24*pulse})`);
+    rg.addColorStop(1,"rgba(20,90,220,0)");
+    ctx.fillStyle=rg;
+    ctx.beginPath();
+    ctx.ellipse(0,0,sc*.52,sc*.16,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Main vertical energy column
+    ctx.save();
+    ctx.globalCompositeOperation="screen";
+    const grad=ctx.createLinearGradient(0,-sc*.78,0,sc*.05);
+    grad.addColorStop(0,"rgba(185,250,255,0)");
+    grad.addColorStop(.28,`rgba(130,235,255,${.16*pulse})`);
+    grad.addColorStop(.62,`rgba(65,190,255,${.22*pulse})`);
+    grad.addColorStop(1,"rgba(40,130,255,0)");
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.moveTo(-sc*.22,0);
+    ctx.lineTo(-sc*.10,-sc*.72);
+    ctx.lineTo(sc*.10,-sc*.72);
+    ctx.lineTo(sc*.22,0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Floating sparkles
+    ctx.save();
+    ctx.globalCompositeOperation="screen";
+    for(let i=0;i<16;i++){
+      const a=i*2.41;
+      const yy=-((t*.18+i*.071)%1)*sc*.80;
+      const xx=Math.sin(a+t*1.8)*sc*(.09+.10*((i%5)/5));
+      const r=sc*(.006+.005*(i%3));
+      ctx.shadowBlur=12;ctx.shadowColor="#8feaff";
+      ctx.fillStyle=`rgba(210,250,255,${.48+.30*Math.sin(t*2+i)})`;
+      ctx.beginPath();ctx.arc(xx,yy,r,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+
+    // Diamond core
+    ctx.save();
+    ctx.translate(0,-sc*.34);
+    ctx.rotate(t*.55);
+    ctx.shadowBlur=22;ctx.shadowColor="#54d8ff";
+    ctx.strokeStyle="#b9f5ff";
+    ctx.fillStyle="rgba(60,175,255,.24)";
+    ctx.lineWidth=Math.max(2,sc*.012);
+    ctx.beginPath();
+    ctx.moveTo(0,-sc*.12);
+    ctx.lineTo(sc*.10,0);
+    ctx.lineTo(0,sc*.12);
+    ctx.lineTo(-sc*.10,0);
+    ctx.closePath();
+    ctx.fill();ctx.stroke();
+    ctx.restore();
+
+    // Destination label
+    ctx.shadowBlur=12;ctx.shadowColor="#7fe5ff";
+    ctx.fillStyle="#d8f8ff";
+    ctx.font=`bold ${Math.max(13,sc*.09)}px system-ui`;
+    ctx.textAlign="center";
+    ctx.fillText(`FLOOR TRANSFER → ${p.to+1}F`,0,-sc*.90);
+    ctx.shadowBlur=0;
+
+    ctx.restore();
+  }
+}
+// STAGE 2 Ver.6 — wall-mounted office details only. Core map/game/transfer rendering remains unchanged.
+const WALL_DECOR=[
+ [
+  {x:3,y:14,type:"door",label:"MEETING ROOM 101"},{x:8,y:10,type:"door",label:"SECURITY"},
+  {x:12,y:7,type:"sign",label:"1F  RECEPTION  →"},{x:18,y:7,type:"board",label:"OFFICE NOTICE"},
+  {x:22,y:12,type:"exit",label:"EXIT"},{x:8,y:13,type:"ext",label:"FIRE"}
+ ],
+ [
+  {x:6,y:8,type:"door",label:"MEETING ROOM 201"},{x:15,y:8,type:"door",label:"ARCHIVE"},
+  {x:18,y:12,type:"door",label:"SERVER ROOM"},{x:6,y:14,type:"sign",label:"2F  OFFICE AREA"},
+  {x:17,y:13,type:"board",label:"STAFF NOTICE"},{x:26,y:10,type:"exit",label:"EXIT"}
+ ],
+ [
+  {x:10,y:5,type:"door",label:"EXECUTIVE ROOM 301"},{x:18,y:5,type:"door",label:"DIRECTOR 302"},
+  {x:6,y:12,type:"door",label:"ARCHIVE 303"},{x:22,y:12,type:"door",label:"SERVER ROOM"},
+  {x:11,y:16,type:"sign",label:"3F  EXECUTIVE FLOOR"},{x:18,y:16,type:"exit",label:"EXIT"}
+ ]
+];
+function decorForCell(x,y){return WALL_DECOR[floor].find(d=>d.x===x&&d.y===y)}
+function drawWallLabels(){
+ for(const d of WALL_DECOR[floor]){
+  const wx=d.x+.5,wy=d.y+.5,dx=wx-player.x,dy=wy-player.y,dist=Math.hypot(dx,dy);
+  if(dist>11)continue; const ang=Math.atan2(dy,dx),rel=norm(ang-player.dir); if(Math.abs(rel)>FOV*.54)continue;
+  const hit=castRay(ang); if(Math.abs(hit.d-dist)>.9)continue;
+  const sx=W/2+(rel/(FOV/2))*(W/2), wallH=Math.min(H*1.35,H/(Math.max(.3,dist)*.72));
+  const y=H/2-wallH*.14, fs=Math.max(8,Math.min(17,wallH*.065));
+  ctx.save();ctx.textAlign="center";ctx.font=`700 ${fs}px system-ui`;
+  if(d.type==="exit"){ctx.fillStyle="rgba(35,110,75,.92)";ctx.shadowBlur=8;ctx.shadowColor="#79ffc0"}
+  else if(d.type==="ext"){ctx.fillStyle="rgba(160,45,38,.95)"}
+  else {ctx.fillStyle="rgba(25,31,34,.92)"}
+  const tw=ctx.measureText(d.label).width+fs*1.2,th=fs*1.7;ctx.fillRect(sx-tw/2,y-th*.72,tw,th);
+  ctx.fillStyle=d.type==="exit"?"#d9fff0":d.type==="ext"?"#fff0e8":"#e7ecec";ctx.fillText(d.label,sx,y+fs*.18);ctx.restore();
+ }
+}
+function draw(){
+ // STAGE 2 Ver.4 — Ver.3a base; only wall-mounted office details added.
+
+ // Suspended office ceiling
+ const cg=ctx.createLinearGradient(0,0,0,H*.52);
+ if(specialRoom){
+   cg.addColorStop(0,"#f2f4f2");cg.addColorStop(.68,"#dfe4e1");cg.addColorStop(1,"#cbd2ce");
+ }else{
+   cg.addColorStop(0,"#252a2d");cg.addColorStop(.68,"#3b4143");cg.addColorStop(1,"#555a5b");
+ }
+ ctx.fillStyle=cg;ctx.fillRect(0,0,W,H*.52);
+
+ // Commercial carpet floor
+ const fg=ctx.createLinearGradient(0,H*.48,0,H);
+ if(specialRoom){
+   fg.addColorStop(0,"#555b5d");fg.addColorStop(.48,"#3f4547");fg.addColorStop(1,"#292f32");
+ }else{
+   fg.addColorStop(0,"#515658");fg.addColorStop(.48,"#3c4143");fg.addColorStop(1,"#292e31");
+ }
+ ctx.fillStyle=fg;ctx.fillRect(0,H*.48,W,H*.52);
+
+ // Ceiling tile grid
+ ctx.save();
+ ctx.strokeStyle="rgba(185,195,198,.12)";ctx.lineWidth=1;
+ const hy=H*.50;
+ for(let i=1;i<=9;i++){
+   const yy=hy*Math.pow(i/9,.58);
+   ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();
+ }
+ for(let i=-9;i<=9;i++){
+   ctx.beginPath();
+   ctx.moveTo(W/2+i*(W/18),hy);
+   ctx.lineTo(W/2+i*(W/3.3),0);
+   ctx.stroke();
+ }
+ ctx.restore();
+
+ // Recessed fluorescent / LED ceiling lights.
+ ctx.save();
+ ctx.globalCompositeOperation="screen";
+ for(let row=0;row<5;row++){
+   const yy=H*(.065+row*.073);
+   const spread=W*(.07+row*.043);
+   const ww=W*(.055+row*.013);
+   const hh=Math.max(3,H*(.006+row*.0018));
+   for(const side of [-1,1]){
+     const xx=W/2+side*spread;
+     ctx.shadowBlur=specialRoom ? 25+row*5 : 14+row*4;
+     ctx.shadowColor=specialRoom ? "rgba(255,255,245,.98)" : "rgba(225,245,255,.75)";
+     ctx.fillStyle=specialRoom
+       ? `rgba(255,255,248,${.72+row*.035})`
+       : `rgba(232,245,247,${.30+row*.035})`;
+     ctx.fillRect(xx-ww/2,yy-hh/2,ww,hh);
+   }
+ }
+ ctx.restore();
+
+ // Ray-cast office walls — same collision/map logic, new material only.
+ const rays=Math.max(320,Math.floor(W/2.2)),sw=W/rays;
+ for(let i=0;i<rays;i++){
+   const a=player.dir-FOV/2+FOV*(i/rays);
+   const hit=castRay(a);
+   const corrected=hit.d*Math.cos(a-player.dir);
+   const h=Math.min(H*1.35,H/(corrected*.72));
+   const top=H/2-h/2;
+   const cellX=Math.floor(hit.x),cellY=Math.floor(hit.y);
+   const edgeX=Math.abs(hit.x-Math.round(hit.x)),edgeY=Math.abs(hit.y-Math.round(hit.y));
+   const vertical=edgeX<edgeY;
+   const base=Math.max(55,205-corrected*8.0);
+   let r,g,b;
+   if(specialRoom){
+     const hex=CARD_ROOM_INFO[specialRoom].wall;
+     const rr=parseInt(hex.slice(1,3),16);
+     const gg=parseInt(hex.slice(3,5),16);
+     const bb=parseInt(hex.slice(5,7),16);
+     const shade=Math.max(.52,1-corrected*.032);
+     r=rr*shade;g=gg*shade;b=bb*shade;
+     if(vertical){r*=.90;g*=.93;b*=.91}
+   }else{
+     r=base*.94;g=base*.945;b=base*.92;
+     if(vertical){r*=.88;g*=.90;b*=.91}
+   }
+   ctx.fillStyle=`rgb(${r|0},${g|0},${b|0})`;
+   ctx.fillRect(i*sw,top,sw+1,h);
+
+   // Fine vertical office-wall panel seams.
+   if((cellX+cellY)%3===0 && i%9===0){
+     ctx.fillStyle=`rgba(40,45,47,${Math.min(.20,.035+corrected*.007)})`;
+     ctx.fillRect(i*sw,top,1,h);
+   }
+
+   // Dark skirting board along wall base.
+   if(i%2===0){
+     const bh=Math.max(1,h*.018);
+     ctx.fillStyle="rgba(42,47,49,.45)";
+     ctx.fillRect(i*sw,top+h-bh,sw+1,bh);
+   }
+
+   // Wall-mounted office fixtures. They are painted on the ray-hit wall itself, so they obey perspective/occlusion.
+   const dec=specialRoom ? null : decorForCell(cellX,cellY);
+   if(dec){
+     const ux=Math.abs(hit.x-Math.floor(hit.x)-.5),uy=Math.abs(hit.y-Math.floor(hit.y)-.5);
+     const u=vertical?(hit.y-Math.floor(hit.y)):(hit.x-Math.floor(hit.x));
+     if(dec.type==="door" && u>.10 && u<.90){
+       ctx.fillStyle="rgba(35,39,41,.82)";ctx.fillRect(i*sw,top+h*.18,sw+1,h*.76);
+       if(u>.78&&u<.83){ctx.fillStyle="rgba(185,190,178,.85)";ctx.fillRect(i*sw,top+h*.57,sw+1,h*.025)}
+     } else if(dec.type==="board" && u>.15 && u<.85){
+       ctx.fillStyle="rgba(73,83,82,.72)";ctx.fillRect(i*sw,top+h*.30,sw+1,h*.32);
+       if((i%7)<2){ctx.fillStyle="rgba(225,224,201,.55)";ctx.fillRect(i*sw,top+h*.36,sw+1,h*.18)}
+     } else if(dec.type==="sign" && u>.20 && u<.80){
+       ctx.fillStyle="rgba(28,35,38,.82)";ctx.fillRect(i*sw,top+h*.34,sw+1,h*.18);
+     } else if(dec.type==="exit" && u>.24 && u<.76){
+       ctx.fillStyle="rgba(30,112,73,.88)";ctx.fillRect(i*sw,top+h*.25,sw+1,h*.15);
+     } else if(dec.type==="ext" && u>.34 && u<.66){
+       ctx.fillStyle="rgba(156,43,35,.92)";ctx.fillRect(i*sw,top+h*.47,sw+1,h*.28);
+     }
+   }
+ }
+
+ // Labels for the wall-mounted fixtures; visibility is checked against the same ray-cast walls.
+ if(!specialRoom)drawWallLabels();
+
+ // Carpet seams: visual only.
+ ctx.save();
+ ctx.strokeStyle="rgba(205,215,218,.045)";
+ for(let i=-10;i<=10;i++){
+   ctx.beginPath();ctx.moveTo(W/2+i*8,hy);ctx.lineTo(W/2+i*W*.11,H);ctx.stroke();
+ }
+ for(let i=1;i<7;i++){
+   const yy=hy+(H-hy)*Math.pow(i/7,1.72);
+   ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();
+ }
+ ctx.restore();
+
+ // Soft overhead ambient wash.
+ ctx.save();
+ const glow=ctx.createRadialGradient(W/2,H*.34,0,W/2,H*.34,W*.62);
+ glow.addColorStop(0,specialRoom ? "rgba(255,255,248,.20)" : "rgba(220,238,240,.065)");
+ glow.addColorStop(1,"rgba(0,0,0,0)");
+ ctx.fillStyle=glow;ctx.fillRect(0,0,W,H*.78);
+ ctx.restore();
+
+ drawCardRoomBoxOverlay();
+ if(specialRoom==="black"){
+   const bg=ctx.createRadialGradient(W/2,H*.30,20,W/2,H*.35,W*.62);
+   bg.addColorStop(0,"rgba(255,235,170,.12)");
+   bg.addColorStop(1,"rgba(255,235,170,0)");
+   ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ }
+
+
+ // Protected Ver.2 transfer renderer: call unchanged.
+ drawAccessDoors();
+ drawMasterSecurityKey();
+ drawEmergencyExit();
+ if(!specialRoom)drawMonster(FOV);
+ drawSecurityCards();
+ drawFloorTransfers();
+
+ if(nearCardRoomExit()){
+   ctx.fillStyle="rgba(240,248,250,.98)";
+   ctx.font="bold 18px system-ui";
+   ctx.textAlign="center";
+   ctx.fillText("E：オフィス通路へ戻る",W/2,H*.72);
+ }
+ if(nearMasterSecurityKey()){
+   ctx.fillStyle="rgba(255,247,210,.98)";
+   ctx.font="bold 18px system-ui";
+   ctx.textAlign="center";
+   ctx.fillText("E：MASTER SECURITY KEYを取得",W/2,H*.72);
+ }
+ if(nearEmergencyExit()){
+   ctx.fillStyle=masterSecurityKey.found
+     ? "rgba(220,255,230,.98)"
+     : "rgba(255,220,220,.98)";
+   ctx.font="bold 18px system-ui";
+   ctx.textAlign="center";
+   ctx.fillText(
+     masterSecurityKey.found
+       ? "E：EMERGENCY EXITを開く"
+       : "EMERGENCY EXIT — LOCKED",
+     W/2,H*.72
+   );
+ }
+ const p=nearbyTransfer();
+ if(p){
+   ctx.fillStyle="rgba(215,248,255,.96)";
+   ctx.font="bold 18px system-ui";ctx.textAlign="center";
+   ctx.shadowBlur=12;ctx.shadowColor="#7fe7ff";
+   ctx.fillText("E："+p.label,W/2,H*.72);
+   ctx.shadowBlur=0;
+ }
+}
+function loop(now){
+ const dt=Math.min(.035,(now-last)/1000);last=now;
+ update(dt);draw();requestAnimationFrame(loop);
+}
+addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE')interact()});
+addEventListener('keyup',e=>keys[e.code]=false);
+canvas.addEventListener('click',()=>{if(running)canvas.requestPointerLock()});
+document.addEventListener('mousemove',e=>{if(document.pointerLockElement===canvas&&running)player.dir=norm(player.dir+e.movementX*.00225)});
+startBtn.addEventListener('click',()=>{
+ start.style.display='none';running=true;last=performance.now();ensureMonsterAudio();canvas.requestPointerLock();showMessage("1F エントランス",1200);
+});
+requestAnimationFrame(loop);
+</script>
+<div id="mobileControls" aria-hidden="true"><div id="mcLook" class="mc-look"></div><div id="mcStick" class="mc-stick"><div id="mcKnob" class="mc-knob"></div></div><button id="mcRun" class="mc-run" type="button">RUN</button><button id="mcE" class="mc-e" type="button">E<span>調べる</span></button></div><script>
+(()=>{
+ const mobile=matchMedia("(hover:none) and (pointer:coarse)").matches||navigator.maxTouchPoints>0;if(!mobile)return;
+ const stick=document.getElementById("mcStick"),knob=document.getElementById("mcKnob"),look=document.getElementById("mcLook"),eb=document.getElementById("mcE"),run=document.getElementById("mcRun");
+ const held=new Set();
+ function fire(type,code,key){window.dispatchEvent(new KeyboardEvent(type,{key,code,bubbles:true,cancelable:true}))}
+ function set(code,on,key){if(on&&!held.has(code)){held.add(code);fire("keydown",code,key)}else if(!on&&held.has(code)){held.delete(code);fire("keyup",code,key)}}
+ function clear(){set("KeyW",0,"w");set("KeyA",0,"a");set("KeyS",0,"s");set("KeyD",0,"d");knob.style.transform="translate(0,0)"}
+ let sid=null,cx=0,cy=0;
+ function sm(x,y){let dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)||1,m=47;if(d>m){dx*=m/d;dy*=m/d}knob.style.transform=`translate(${dx}px,${dy}px)`;let q=12;set("KeyW",dy<-q,"w");set("KeyS",dy>q,"s");set("KeyA",dx<-q,"a");set("KeyD",dx>q,"d")}
+ stick.onpointerdown=e=>{sid=e.pointerId;stick.setPointerCapture(sid);let r=stick.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;sm(e.clientX,e.clientY);e.preventDefault()};
+ stick.onpointermove=e=>{if(e.pointerId===sid){sm(e.clientX,e.clientY);e.preventDefault()}};
+ stick.onpointerup=stick.onpointercancel=e=>{if(sid===null||e.pointerId===sid){sid=null;clear();e.preventDefault()}};
+ let lid=null,lx=0;
+ look.onpointerdown=e=>{lid=e.pointerId;lx=e.clientX;look.setPointerCapture(lid);e.preventDefault()};
+ look.onpointermove=e=>{if(e.pointerId!==lid)return;let dx=e.clientX-lx;lx=e.clientX;try{
+   if(typeof inRoom201!=="undefined"&&inRoom201)roomPlayer201.dir+=dx*.003;
+   else if(typeof inRoom218!=="undefined"&&inRoom218)roomPlayer218.dir+=dx*.003;
+   else if(typeof inRoom209!=="undefined"&&inRoom209)roomPlayer209.dir+=dx*.003;
+   else if(typeof inRoom203!=="undefined"&&inRoom203)roomPlayer203.dir+=dx*.003;
+   else if(typeof inRoom214!=="undefined"&&inRoom214)roomPlayer.dir+=dx*.003;
+   else if(typeof player!=="undefined")player.dir+=dx*.003;
+ }catch(_){}e.preventDefault()};
+ look.onpointerup=look.onpointercancel=e=>{if(lid===null||e.pointerId===lid){lid=null;e.preventDefault()}};
+ eb.onpointerdown=e=>{e.preventDefault();fire("keydown","KeyE","e");setTimeout(()=>fire("keyup","KeyE","e"),70)};
+ let fast=false;run.onpointerdown=e=>{e.preventDefault();fast=!fast;set("ShiftLeft",fast,"Shift");run.style.background=fast?"rgba(255,255,255,.34)":"rgba(18,22,28,.48)"};
+ window.addEventListener("blur",()=>{clear();if(fast){fast=false;set("ShiftLeft",0,"Shift")}});
+})();
+</script></body>
+</html>

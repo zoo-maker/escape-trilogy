@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()">
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESCAPE — COMPLETE TRILOGY</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#gameFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+#transition{position:absolute;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:#fff;opacity:0;pointer-events:none}
+#transition.show{display:flex;animation:fadeStage 2.4s ease both}
+#transition .card{text-align:center;color:#111;opacity:0;animation:titleIn 2.4s ease both}
+#transition .small{font-size:14px;letter-spacing:.35em;color:#777;margin-bottom:14px}
+#transition .title{font-weight:900;font-size:clamp(34px,6vw,76px);letter-spacing:.10em}
+#transition .sub{font-weight:700;font-size:clamp(14px,2vw,22px);letter-spacing:.16em;margin-top:14px;color:#555}
+@keyframes fadeStage{0%{opacity:0}24%{opacity:1}78%{opacity:1}100%{opacity:0}}
+@keyframes titleIn{0%,18%{opacity:0;transform:translateY(10px)}35%,75%{opacity:1;transform:none}100%{opacity:0}}
+</style>
+<style>#mobileRotate{display:none;position:fixed;inset:0;z-index:2147483640;background:#050608;color:#fff;align-items:center;justify-content:center;text-align:center;font:700 18px/1.7 system-ui}@media (hover:none) and (pointer:coarse) and (orientation:portrait){#mobileRotate{display:flex}#gameFrame{visibility:hidden}}</style></head>
+<body><div id="mobileRotate">スマホを横向きにしてください。<br>横画面でゲームを開始します。</div>
+<iframe id="gameFrame" src="stage1_cave.html" allow="autoplay; fullscreen"></iframe>
+<div id="transition"><div class="card">
+  <div class="small" id="chapter">STAGE 2</div>
+  <div class="title" id="title">OFFICE</div>
+  <div class="sub" id="sub">無人オフィス</div>
+</div></div>
+<script>
+const frame=document.getElementById("gameFrame");
+const trans=document.getElementById("transition");
+const chapter=document.getElementById("chapter");
+const title=document.getElementById("title");
+const sub=document.getElementById("sub");
+let current=1,transitioning=false;
+
+function goStage(n){
+ if(transitioning || n<=current)return;
+ transitioning=true;
+ const data=n===2
+   ? ["STAGE 2","OFFICE","無人オフィス"]
+   : ["STAGE 3","HOTEL","最後の舞台"];
+ chapter.textContent=data[0]; title.textContent=data[1]; sub.textContent=data[2];
+ trans.classList.remove("show"); void trans.offsetWidth; trans.classList.add("show");
+
+ // Switch while the screen is fully white. Each original stage keeps its own start screen,
+ // so the next click remains a real user gesture and all Web Audio behavior stays reliable.
+ setTimeout(()=>{
+   frame.onload=()=>{
+     try{
+       const doc=frame.contentDocument;
+       const btn=doc&&doc.getElementById("startBtn");
+       if(btn) btn.click();
+     }catch(_){}
+     frame.onload=null;
+   };
+   frame.src=n===2?"stage2_office.html":"stage3_hotel.html";
+   current=n;
+ },900);
+ setTimeout(()=>{
+   trans.classList.remove("show");
+   trans.style.display="none";
+   transitioning=false;
+ },2450);
+}
+window.addEventListener("message",e=>{
+ // PUBLIC RELEASE: accept clear messages only from this site's own origin
+ // and only from the currently embedded game frame.
+ const localFile=(window.location.protocol==="file:");
+ if(localFile){
+   if(e.origin!=="null")return;
+ }else{
+   if(e.origin!==window.location.origin)return;
+ }
+ if(e.source!==frame.contentWindow)return;
+ const d=e.data||{};
+ if(d.type!=="ESCAPE_STAGE_CLEAR")return;
+ if(d.stage===1 && current===1)goStage(2);
+ if(d.stage===2 && current===2)goStage(3);
+});
+</script>
+</body>
+</html>
